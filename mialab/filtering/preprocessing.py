@@ -8,7 +8,6 @@ import pymia.filtering.filter as pymia_fltr
 import SimpleITK as sitk
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class ImageNormalization(pymia_fltr.Filter):
@@ -30,8 +29,6 @@ class ImageNormalization(pymia_fltr.Filter):
         """
 
         img_arr = sitk.GetArrayFromImage(image)
-        # plt.subplot(1, 2, 1)
-        # plt.imshow(img_arr[:,:,90], cmap='gray')
 
         # todo: normalize the image using numpy
         # warnings.warn('No normalization implemented. Returning unprocessed image.')
@@ -41,10 +38,6 @@ class ImageNormalization(pymia_fltr.Filter):
 
         img_out = sitk.GetImageFromArray(img_arr)
         img_out.CopyInformation(image)
-
-        # plt.subplot(1, 2, 2)
-        # plt.imshow(img_arr[:,:,90], cmap='gray')
-        # plt.show()
 
         return img_out
 
@@ -89,14 +82,11 @@ class SkullStripping(pymia_fltr.Filter):
         """
         mask = params.img_mask  # the brain mask
         img_arr = sitk.GetArrayFromImage(image)
-        # print(np.shape(mask), np.shape(img_arr))
         mask = np.reshape(mask, np.shape(img_arr))
 
         # todo: remove the skull from the image by using the brain mask
         # warnings.warn('No skull-stripping implemented. Returning unprocessed image.')
         img_arr = np.where(mask, img_arr, 0)  # apply mask to remove skull
-        # plt.imshow(img_arr[:,:,90], cmap='gray')
-        # plt.show()
 
         image = sitk.GetImageFromArray(img_arr)
 

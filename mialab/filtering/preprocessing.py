@@ -6,7 +6,6 @@ import warnings
 
 import pymia.filtering.filter as pymia_fltr
 import SimpleITK as sitk
-
 import numpy as np
 
 
@@ -27,7 +26,6 @@ class ImageNormalization(pymia_fltr.Filter):
         Returns:
             sitk.Image: The normalized image.
         """
-
         img_arr = sitk.GetArrayFromImage(image)
 
         # todo: normalize the image using numpy
@@ -80,14 +78,12 @@ class SkullStripping(pymia_fltr.Filter):
         Returns:
             sitk.Image: The normalized image.
         """
-        mask = params.img_mask  # the brain mask
         img_arr = sitk.GetArrayFromImage(image)
-        mask = np.reshape(mask, np.shape(img_arr))
+        mask = sitk.GetArrayFromImage(params.img_mask).reshape(np.shape(img_arr))  # the brain mask
 
         # todo: remove the skull from the image by using the brain mask
         # warnings.warn('No skull-stripping implemented. Returning unprocessed image.')
-        img_arr = np.where(mask, img_arr, 0)  # apply mask to remove skull
-
+        img_arr = np.multiply(img_arr, mask)  # apply mask to remove skull
         image = sitk.GetImageFromArray(img_arr)
 
         return image
@@ -135,7 +131,6 @@ class ImageRegistration(pymia_fltr.Filter):
         Returns:
             sitk.Image: The registered image.
         """
-
         # todo: replace this filter by a registration. Registration can be costly, therefore, we provide you the
         # transformation, which you only need to apply to the image!
         # warnings.warn('No registration implemented. Returning unregistered image')

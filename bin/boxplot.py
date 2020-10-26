@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+repo = "2020-10-26-13-41-02"  # set path manually
 
 def main():
     # todo: load the "results.csv" file from the mia-results directory
@@ -12,7 +13,7 @@ def main():
     # but you will need to install it first ('pip install pandas') and import it to this file ('import pandas as pd')
 
     labels = ['Amygdala', 'GreyMatter', 'Hippocampus', 'Thalamus', 'WhiteMatter']
-    path = "mia-result/2020-09-26-02-54-03/results.csv"
+    path = "mia-result/" + repo + "/results.csv"
     results = pd.read_csv(path, sep=';')
 
     shape = (len(labels), int(len(results)/len(labels)))
@@ -34,6 +35,7 @@ def main():
         if i == 0:
             plt.ylabel('Hausdorff')
 
+    plt.savefig("mia-result/" + repo + "/boxplot.png")
     plt.show()
 
 

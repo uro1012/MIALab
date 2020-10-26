@@ -1,0 +1,16 @@
+# LaTeX
+*.gz
+*.bak
+*.toc
+*.out
+*.log
+*.lof
+*.aux
+*.bib
+*.dvi
+*.glo
+*.idx
+*.ids
+*.ist
+*(busy)
+*.pdf

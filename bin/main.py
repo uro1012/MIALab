@@ -118,7 +118,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
         # evaluate segmentation without post-processing
         evaluator.evaluate(image_prediction, img.images[structure.BrainImageTypes.GroundTruth], img.id_)
-
+        # MY SEGMENTATION
         images_prediction.append(image_prediction)
         images_probabilities.append(image_probabilities)
 

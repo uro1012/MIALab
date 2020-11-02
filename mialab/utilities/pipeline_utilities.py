@@ -17,6 +17,8 @@ import mialab.filtering.postprocessing as fltr_postp
 import mialab.filtering.preprocessing as fltr_prep
 import mialab.utilities.multi_processor as mproc
 
+import matplotlib.pyplot as mp
+
 atlas_t1 = sitk.Image()
 atlas_t2 = sitk.Image()
 
@@ -185,6 +187,9 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     path_to_transform = paths.pop(structure.BrainImageTypes.RegistrationTransform, '')
     img = {img_key: sitk.ReadImage(path) for img_key, path in paths.items()}
     transform = sitk.ReadTransform(path_to_transform)
+
+    transform = findTransform(atlas_t1, sitk.Mask(img[structure.BrainImageTypes.T1w], img[structure.BrainImageTypes.BrainMask]), transform)
+
     img = structure.BrainImage(id_, path, img, transform)
 
     # construct pipeline for brain mask registration
@@ -361,3 +366,64 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
     else:
         pp_images = [post_process(img, seg, prob, **post_process_params) for img, seg, prob in param_list]
     return pp_images
+
+def findTransform(fixed, moving, transform):
+    moving = sitk.Cast(sitk.RescaleIntensity(moving), sitk.sitkFloat32)
+
+    R = sitk.ImageRegistrationMethod()
+    R.SetInterpolator(sitk.sitkLinear)
+
+    # Image Registration only Translation
+    # R.SetMetricAsMattesMutualInformation(50)
+    # R.SetMetricSamplingPercentage(0.1, sitk.sitkWallClock)
+    # R.SetMetricSamplingStrategy(R.RANDOM)
+    # R.SetOptimizerAsRegularStepGradientDescent(1.0, .001, 200)
+    # R.SetInitialTransform(sitk.TranslationTransform(fixed.GetDimension()))
+
+    # Image Registration Method Affine 1
+    initialTx = sitk.CenteredTransformInitializer(fixed, moving, sitk.AffineTransform(fixed.GetDimension()))
+    R.SetInitialTransform(initialTx, inPlace=False)
+    R.SetMetricAsMattesMutualInformation(numberOfHistogramBins=50)
+    R.SetMetricSamplingStrategy(R.RANDOM)
+    R.SetMetricSamplingPercentage(0.01)
+    R.SetOptimizerAsGradientDescent(learningRate=1.0, numberOfIterations=100, convergenceMinimumValue=1e-6, convergenceWindowSize=10)
+    R.SetOptimizerScalesFromPhysicalShift()
+    R.SetShrinkFactorsPerLevel(shrinkFactors=[4, 2, 1])
+    R.SetSmoothingSigmasPerLevel(smoothingSigmas=[2, 1, 0])
+    R.SmoothingSigmasAreSpecifiedInPhysicalUnitsOn()
+
+    final_transform = R.Execute(fixed, moving)
+
+    # show diffrent between given Transformation and own transformation comment out it is not necessary
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetReferenceImage(fixed)
+    resampler.SetInterpolator(sitk.sitkLinear)
+    resampler.SetDefaultPixelValue(100)
+    resampler.SetTransform(final_transform)
+
+    out = resampler.Execute(moving)
+    simg1 = sitk.Cast(sitk.RescaleIntensity(fixed), sitk.sitkUInt8)
+    simg2 = sitk.Cast(sitk.RescaleIntensity(out), sitk.sitkUInt8)
+
+    slice1 = sitk.GetArrayFromImage(simg1)[70, :, :]
+    slice2 = sitk.GetArrayFromImage(simg2)[70, :, :]
+    alpha = 0.2
+    img = np.uint8(slice1 * alpha + slice2 * (1 - alpha))
+    mp.figure(1)
+    mp.imshow(img)
+
+    resampler.SetTransform(transform)
+
+    out = resampler.Execute(moving)
+    simg1 = sitk.Cast(sitk.RescaleIntensity(fixed), sitk.sitkUInt8)
+    simg2 = sitk.Cast(sitk.RescaleIntensity(out), sitk.sitkUInt8)
+
+    slice1 = sitk.GetArrayFromImage(simg1)[70, :, :]
+    slice2 = sitk.GetArrayFromImage(simg2)[70, :, :]
+    alpha = 0.2
+    img = np.uint8(slice1 * alpha + slice2 * (1 - alpha))
+    mp.figure(2)
+    mp.imshow(img)
+    mp.show()
+
+    return final_transform

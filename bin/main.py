@@ -61,23 +61,23 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'normalization_pre': True,
                           'registration_pre': True,
                           'coordinates_feature': True,
-                          'intensity_feature': True,
-                          'gradient_intensity_feature': True}
+                          'intensity_feature': False,
+                          'gradient_intensity_feature': False}
 
     # load images for training and pre-process
     images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
     # generate feature matrix and label vector
-    data_train = np.concatenate([img.feature_matrix[0] for img in images])
-    labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
+    # data_train = np.concatenate([img.feature_matrix[0] for img in images])
+    # labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
 
     warnings.warn('Random forest parameters not properly set.')
-    forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
-                                                n_estimators=10,
-                                                max_depth=10)
+    # forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
+    #                                           n_estimators=10,
+    #                                           max_depth=10)
 
     start_time = timeit.default_timer()
-    forest.fit(data_train, labels_train)
+    # forest.fit(data_train, labels_train)
     print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
     # create a result directory with timestamp
@@ -107,25 +107,39 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
         print('-' * 10, 'Testing', img.id_)
 
         start_time = timeit.default_timer()
-        predictions = forest.predict(img.feature_matrix[0])
-        probabilities = forest.predict_proba(img.feature_matrix[0])
+        # predictions = forest.predict(img.feature_matrix[0])
+        probabilities = images[0].images[structure.BrainImageTypes.GroundTruth]
+        predictions = images[0].images[structure.BrainImageTypes.GroundTruth]
+
         print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
         # convert prediction and probabilities back to SimpleITK images
-        image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions.astype(np.uint8),
-                                                                        img.image_properties)
-        image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
+        # image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
+        #                                                                img.image_properties)
+        # image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
+        image_prediction = predictions
+        image_prediction.SetOrigin(img.image_properties.origin)
+        image_prediction.SetSpacing(img.image_properties.spacing)
+        image_prediction.SetDirection(img.image_properties.direction)
 
-        # evaluate segmentation without post-processing
+        image_probabilities = probabilities
+        image_probabilities.SetOrigin(img.image_properties.origin)
+        image_probabilities.SetSpacing(img.image_properties.spacing)
+        image_probabilities.SetDirection(img.image_properties.direction)
+
+        #evaluate segmentation without post-processing
         evaluator.evaluate(image_prediction, img.images[structure.BrainImageTypes.GroundTruth], img.id_)
-        # MY SEGMENTATION
+
         images_prediction.append(image_prediction)
         images_probabilities.append(image_probabilities)
 
     # post-process segmentation and evaluate with post-processing
     post_process_params = {'simple_post': True}
     images_post_processed = putil.post_process_batch(images_test, images_prediction, images_probabilities,
-                                                     post_process_params, multi_process=True)
+                                                      post_process_params, multi_process=True)
+
+    # images_post_processed = putil.post_process_batch(images_test, images_prediction,
+    #                                                 post_process_params, multi_process=False)
 
     for i, img in enumerate(images_test):
         evaluator.evaluate(images_post_processed[i], img.images[structure.BrainImageTypes.GroundTruth],

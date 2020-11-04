@@ -360,4 +360,5 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
                                              mproc.PostProcessingPickleHelper)
     else:
         pp_images = [post_process(img, seg, prob, **post_process_params) for img, seg, prob in param_list]
+
     return pp_images

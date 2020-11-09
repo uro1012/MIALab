@@ -57,7 +57,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
-    pre_process_params = {'skullstrip_pre': True,
+    pre_process_params = {'skullstrip_pre': False,
                           'normalization_pre': True,
                           'registration_pre': True,
                           'coordinates_feature': True,
@@ -65,7 +65,15 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
-    images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+
+    #putil.display_slice(images[1:5].images[structure.BrainImageTypes.GroundTruth], 100)
+    # Create a atlas with the GroundTruth
+    #atlas_label = putil.create_atlas(images)
+
+    # Load atlas files
+    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
+    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
 
     # generate feature matrix and label vector
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])
@@ -108,8 +116,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
         start_time = timeit.default_timer()
         # predictions = forest.predict(img.feature_matrix[0])
-        probabilities = images[0].images[structure.BrainImageTypes.GroundTruth]
-        predictions = images[0].images[structure.BrainImageTypes.GroundTruth]
+        probabilities = atlas_probabilities
+        predictions = atlas_prediction
 
         print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 

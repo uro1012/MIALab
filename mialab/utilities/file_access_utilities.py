@@ -66,7 +66,11 @@ class BrainImageFilePathGenerator(FilePathGenerator):
         elif file_key == structure.BrainImageTypes.BrainMask:
             file_name = 'Brainmasknative'
         elif file_key == structure.BrainImageTypes.RegistrationTransform:
-            return os.path.join(root_dir, 'affine.txt')
+            file_name = 'affine'
+            file_extension = '.txt'
+        elif file_key == structure.BrainImageTypes.RegistrationParameterMap:
+            file_name = 'parameterMap'
+            file_extension = ''
         else:
             raise ValueError('Unknown key')
 

@@ -186,6 +186,10 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     path_to_parameterMap = paths.pop(structure.BrainImageTypes.RegistrationParameterMap, '')
 
     img = {img_key: sitk.ReadImage(path) for img_key, path in paths.items()}
+
+    is_non_rigid = False
+    if kwargs.get('non_rigid_registration', False):
+        is_non_rigid = True
     transform = sitk.ReadTransform(path_to_transform)
     # parameterMap = findTransform(atlas_t1, sitk.Mask(img[structure.BrainImageTypes.T1w], img[structure.BrainImageTypes.BrainMask]))
     parameterMap = (sitk.ReadParameterFile(path_to_parameterMap + '_0.txt'),
@@ -198,7 +202,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_brain_mask = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_brain_mask.add_filter(fltr_prep.ImageRegistration())
-        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True),
+        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_brain_mask.filters) - 1)
 
     # execute pipeline on the brain mask image
@@ -209,7 +213,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_t1 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t1.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap),
+        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t1.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t1.add_filter(fltr_prep.SkullStripping())
@@ -225,7 +229,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_t2 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation, img.parameterMap),
+        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t2.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t2.add_filter(fltr_prep.SkullStripping())
@@ -241,7 +245,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_gt = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_gt.add_filter(fltr_prep.ImageRegistration())
-        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True),
+        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_gt.filters) - 1)
 
     # execute pipeline on the ground truth image

@@ -104,7 +104,8 @@ class SkullStripping(pymia_fltr.Filter):
 class ImageRegistrationParameters(pymia_fltr.FilterParams):
     """Image registration parameters."""
 
-    def __init__(self, atlas: sitk.Image, transformation: sitk.Transform, parameterMap: sitk.ParameterMap, is_ground_truth: bool = False):
+    def __init__(self, atlas: sitk.Image, transformation: sitk.Transform, parameterMap: sitk.ParameterMap,
+                 is_ground_truth: bool = False, is_non_rigid: bool = False):
         """Initializes a new instance of the ImageRegistrationParameters
 
         Args:
@@ -116,6 +117,7 @@ class ImageRegistrationParameters(pymia_fltr.FilterParams):
         self.transformation = transformation
         self.parameterMap = parameterMap
         self.is_ground_truth = is_ground_truth
+        self.is_non_rigid = is_non_rigid
 
 
 class ImageRegistration(pymia_fltr.Filter):
@@ -136,29 +138,35 @@ class ImageRegistration(pymia_fltr.Filter):
             sitk.Image: The registered image.
         """
         # transformation, which you only need to apply to the image!
-
         atlas = params.atlas
         transform = params.transformation
         parameterMap = params.parameterMap
-        is_ground_truth = params.is_ground_truth  # the ground truth will be handled slightly different
+        is_ground_truth = params.is_ground_truth
+        is_non_rigid = params.is_non_rigid# the ground truth will be handled slightly different
 
         if is_ground_truth:
-            # apply transformation to ground truth and brain mask using nearest neighbor interpolation
-            transformix = sitk.TransformixImageFilter()
-            transformix.SetTransformParameterMap(parameterMap)
-            transformix.SetTransformParameter("ResampeInterpolator", "FinalNearestNeighborInterpolator")
-            transformix.SetTransformParameter("FinalBSplineInterpolationOrder", "0")
-            transformix.LogToConsoleOff()
-            transformix.LogToFileOff()
-            transformix.SetMovingImage(image)
-            image = transformix.Execute()
-            image = sitk.Cast(image, sitk.sitkInt32)
-            # image = sitk.Resample(image, atlas, transform, sitk.sitkNearestNeighbor, 0,
-            #                       image.GetPixelIDValue())
-        else:
-            # apply transformation to T1w and T2w images using linear interpolation
+            if is_non_rigid:
+                # apply non_rigid transformation to ground truth and brain mask using nearest neighbor interpolation
+                transformix = sitk.TransformixImageFilter()
+                transformix.SetTransformParameterMap(parameterMap)
+                transformix.SetTransformParameter("ResampeInterpolator", "FinalNearestNeighborInterpolator")
+                transformix.SetTransformParameter("FinalBSplineInterpolationOrder", "0")
+                transformix.LogToConsoleOff()
+                transformix.LogToFileOff()
+                transformix.SetMovingImage(image)
+                image = transformix.Execute()
+                image = sitk.Cast(image, sitk.sitkInt32)
+            else:
+                # apply transformation to ground truth and brain mask using nearest neighbor interpolation
+                image = sitk.Resample(image, atlas, transform, sitk.sitkNearestNeighbor, 0, image.GetPixelIDValue())
+        elif is_non_rigid:
+            # apply non_rigid transformation to T1w and T2w images using linear interpolation
             image = sitk.Transformix(image, parameterMap)
-            # imageArray = sitk.GetArrayFromImage(image)[100, :, :]
+        else:
+            # apply affine transformation to T1w and T2w images using linear interpolation
+            image = sitk.Resample(image, atlas, transform, sitk.sitkLinear, 0.0, image.GetPixelIDValue())
+
+        # imageArray = sitk.GetArrayFromImage(image)[100, :, :]
             # atlasArray = sitk.GetArrayFromImage(atlas)[100, :, :]
             # mp.figure(1)
             # mp.imshow(imageArray, cmap=mp.gray())
@@ -176,10 +184,6 @@ class ImageRegistration(pymia_fltr.Filter):
             # mp.figure(3)
             # mp.imshow(bothArray)
             # mp.show()
-
-            # image = sitk.Resample(image, atlas, transform, sitk.sitkLinear, 0.0,
-            #                       image.GetPixelIDValue())
-
         # note: if you are interested in registration, and want to test it, have a look at
         # pymia.filtering.registration.MultiModalRegistration. Think about the type of registration, i.e.
         # do you want to register to an atlas or inter-subject? Or just ask us, we can guide you ;-)

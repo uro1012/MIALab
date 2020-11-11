@@ -377,11 +377,14 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
 def display_slice(images, slice, enable_plot=1):
     fig = plt.figure(figsize=(8, 8))
 
+    n_row_plot = 2
+    n_col_plot = 5
+
     if enable_plot:
         for i in range(1, len(images)+1):
-            fig.add_subplot(1, len(images), i)
+            fig.add_subplot(n_row_plot, n_col_plot, i)
             image_3d_np = sitk.GetArrayFromImage(images[i-1])
-            image_2d_np = image_3d_np[:, :, slice]
+            image_2d_np = image_3d_np[slice, :, :]
 
             plt.imshow(image_2d_np, interpolation='nearest')
             plt.draw()
@@ -389,11 +392,9 @@ def display_slice(images, slice, enable_plot=1):
     plt.show()
 
 
-def create_atlas(images) -> sitk.Image:
+def create_atlas(images):
     # Creates a 4D array with all the training groundtruth
     images_np = None
-
-    # TODO: We need to check that all image properties are the same
 
     # Get the list of GroundTruth and converts the image in numpy format
     image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
@@ -406,7 +407,7 @@ def create_atlas(images) -> sitk.Image:
 
     # Remove 4th dimension
     atlas_predictions = np.squeeze(atlas_np.mode)
-    atlas_probabilities = np.squeeze(atlas_np.count)/20
+    atlas_probabilities = np.squeeze(atlas_np.count)/len(images)
 
     # Converts atlas back in simpleITK image
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
@@ -415,4 +416,4 @@ def create_atlas(images) -> sitk.Image:
     sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_prediction.nii.gz')
     sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
 
-    return zip(image_prediction, image_probabilities)
+    return

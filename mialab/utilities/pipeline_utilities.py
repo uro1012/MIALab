@@ -5,11 +5,13 @@ import typing as t
 import warnings
 
 import numpy as np
+from scipy import stats
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
 import pymia.evaluation.metric as metric
 import SimpleITK as sitk
+from matplotlib import pyplot as plt
 
 import mialab.data.structure as structure
 import mialab.filtering.feature_extraction as fltr_feat
@@ -179,20 +181,34 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     """
 
     print('-' * 10, 'Processing', id_)
+    images_to_plot = []
 
     # load image
     path = paths.pop(id_, '')  # the value with key id_ is the root directory of the image
     path_to_transform = paths.pop(structure.BrainImageTypes.RegistrationTransform, '')
+    path_to_parameterMap = paths.pop(structure.BrainImageTypes.RegistrationParameterMap, '')
+
     img = {img_key: sitk.ReadImage(path) for img_key, path in paths.items()}
+
+    is_non_rigid = False
+    if kwargs.get('non_rigid_registration', False):
+        is_non_rigid = True
     transform = sitk.ReadTransform(path_to_transform)
-    img = structure.BrainImage(id_, path, img, transform)
+    # parameterMap = findTransform(atlas_t1, sitk.Mask(img[structure.BrainImageTypes.T1w], img[structure.BrainImageTypes.BrainMask]))
+    parameterMap = (sitk.ReadParameterFile(path_to_parameterMap + '_0.txt'),
+                    sitk.ReadParameterFile(path_to_parameterMap + '_1.txt'))
+
+    img = structure.BrainImage(id_, path, img, transform, parameterMap)
+
+    if id_ == '100307':
+        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
 
     # construct pipeline for brain mask registration
     # we need to perform this before the T1w and T2w pipeline because the registered mask is used for skull-stripping
     pipeline_brain_mask = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_brain_mask.add_filter(fltr_prep.ImageRegistration())
-        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, True),
+        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_brain_mask.filters) - 1)
 
     # execute pipeline on the brain mask image
@@ -203,7 +219,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_t1 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t1.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation),
+        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t1.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t1.add_filter(fltr_prep.SkullStripping())
@@ -215,11 +231,15 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     # execute pipeline on the T1w image
     img.images[structure.BrainImageTypes.T1w] = pipeline_t1.execute(img.images[structure.BrainImageTypes.T1w])
 
+    if id_ == '100307':
+        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+        display_slice(images_to_plot, 100)
+
     # construct pipeline for T2w image pre-processing
     pipeline_t2 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation),
+        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t2.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t2.add_filter(fltr_prep.SkullStripping())
@@ -235,7 +255,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_gt = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_gt.add_filter(fltr_prep.ImageRegistration())
-        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, True),
+        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_gt.filters) - 1)
 
     # execute pipeline on the ground truth image
@@ -360,4 +380,50 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
                                              mproc.PostProcessingPickleHelper)
     else:
         pp_images = [post_process(img, seg, prob, **post_process_params) for img, seg, prob in param_list]
+
     return pp_images
+
+
+def display_slice(images, slice, enable_plot=1):
+    fig = plt.figure(figsize=(8, 8))
+
+    n_row_plot = 2
+    n_col_plot = 5
+
+    if enable_plot:
+        for i in range(1, len(images)+1):
+            fig.add_subplot(n_row_plot, n_col_plot, i)
+            image_3d_np = sitk.GetArrayFromImage(images[i-1])
+            image_2d_np = image_3d_np[slice, :, :]
+
+            plt.imshow(image_2d_np, interpolation='nearest')
+            plt.draw()
+
+    plt.show()
+
+
+def create_atlas(images):
+    # Creates a 4D array with all the training groundtruth
+    images_np = None
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Stack the images in a 4-D numpy array
+    images_np = np.stack(image_np,  axis=-1)
+
+    # Compile the atlas by taking the most occurring label for each voxel
+    atlas_np = stats.mode(images_np, axis=3)
+
+    # Remove 4th dimension
+    atlas_predictions = np.squeeze(atlas_np.mode)
+    atlas_probabilities = np.squeeze(atlas_np.count)/len(images)
+
+    # Converts atlas back in simpleITK image
+    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
+    image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
+
+    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_prediction.nii.gz')
+    sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
+
+    return

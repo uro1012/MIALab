@@ -11,13 +11,13 @@ class BrainImageTypes(enum.Enum):
     T2w = 2  #: The T2-weighted image.
     GroundTruth = 3  #: The ground truth image.
     BrainMask = 4  #: The brain mask image.
-    RegistrationTransform = 5  #: The registration transformation
+    RegistrationTransform = 5  #: The affine registration transformation
+    RegistrationParameterMap = 6  #: The non-rigid registration transformation
 
 
 class BrainImage:
     """Represents a brain image."""
-    
-    def __init__(self, id_: str, path: str, images: dict, transformation: sitk.Transform):
+    def __init__(self, id_: str, path: str, images: dict, transformation: sitk.Transform, parameterMap: sitk.ParameterMap):
         """Initializes a new instance of the BrainImage class.
 
         Args:
@@ -25,11 +25,11 @@ class BrainImage:
             path (str): Full path to the image directory.
             images (dict): The images, where the key is a :py:class:`BrainImageTypes` and the value is a SimpleITK image.
         """
-
         self.id_ = id_
         self.path = path
         self.images = images
         self.transformation = transformation
+        self.parameterMap = parameterMap
 
         # ensure we have an image to get the image properties
         if len(images) == 0:

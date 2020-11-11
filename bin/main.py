@@ -62,7 +62,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_process_params = {'skullstrip_pre': False,
                           'normalization_pre': True,
                           'registration_pre': True,
-                          'non_rigid_registration': True,
+                          'non_rigid_registration': False,
                           'coordinates_feature': True,
                           'intensity_feature': False,
                           'gradient_intensity_feature': False}
@@ -82,7 +82,6 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])
     # labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
 
-    warnings.warn('Random forest parameters not properly set.')
     # forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
     #                                           n_estimators=10,
     #                                           max_depth=10)

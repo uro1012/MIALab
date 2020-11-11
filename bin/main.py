@@ -68,9 +68,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load images for training and pre-process
     # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
-    #putil.display_slice(images[1:5].images[structure.BrainImageTypes.GroundTruth], 100)
     # Create a atlas with the GroundTruth
-    #atlas_label = putil.create_atlas(images)
+    # putil.create_atlas(images)
 
     # Load atlas files
     atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
@@ -108,6 +107,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load images for testing and pre-process
     pre_process_params['training'] = False
     images_test = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+
+    putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
 
     images_prediction = []
     images_probabilities = []

@@ -5,11 +5,13 @@ import typing as t
 import warnings
 
 import numpy as np
+from scipy import stats
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
 import pymia.evaluation.metric as metric
 import SimpleITK as sitk
+from matplotlib import pyplot as plt
 
 import mialab.data.structure as structure
 import mialab.filtering.feature_extraction as fltr_feat
@@ -179,6 +181,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     """
 
     print('-' * 10, 'Processing', id_)
+    images_to_plot = []
 
     # load image
     path = paths.pop(id_, '')  # the value with key id_ is the root directory of the image
@@ -196,6 +199,9 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
                     sitk.ReadParameterFile(path_to_parameterMap + '_1.txt'))
 
     img = structure.BrainImage(id_, path, img, transform, parameterMap)
+
+    if id_ == '100307':
+        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
 
     # construct pipeline for brain mask registration
     # we need to perform this before the T1w and T2w pipeline because the registered mask is used for skull-stripping
@@ -224,6 +230,10 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
 
     # execute pipeline on the T1w image
     img.images[structure.BrainImageTypes.T1w] = pipeline_t1.execute(img.images[structure.BrainImageTypes.T1w])
+
+    if id_ == '100307':
+        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+        display_slice(images_to_plot, 100)
 
     # construct pipeline for T2w image pre-processing
     pipeline_t2 = fltr.FilterPipeline()
@@ -370,7 +380,9 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
                                              mproc.PostProcessingPickleHelper)
     else:
         pp_images = [post_process(img, seg, prob, **post_process_params) for img, seg, prob in param_list]
+
     return pp_images
+
 
 def findTransform(fixed, moving):
     moving = sitk.Cast(sitk.RescaleIntensity(moving), sitk.sitkFloat32)
@@ -388,3 +400,47 @@ def findTransform(fixed, moving):
     elastixImageFilter.Execute()
     transformixParameter = elastixImageFilter.GetTransformParameterMap()
     return transformixParameter
+
+
+def display_slice(images, slice, enable_plot=1):
+    fig = plt.figure(figsize=(8, 8))
+
+    if enable_plot:
+        for i in range(1, len(images)+1):
+            fig.add_subplot(1, len(images), i)
+            image_3d_np = sitk.GetArrayFromImage(images[i-1])
+            image_2d_np = image_3d_np[:, :, slice]
+
+            plt.imshow(image_2d_np, interpolation='nearest')
+            plt.draw()
+
+    plt.show()
+
+
+def create_atlas(images) -> sitk.Image:
+    # Creates a 4D array with all the training groundtruth
+    images_np = None
+
+    # TODO: We need to check that all image properties are the same
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Stack the images in a 4-D numpy array
+    images_np = np.stack(image_np,  axis=-1)
+
+    # Compile the atlas by taking the most occurring label for each voxel
+    atlas_np = stats.mode(images_np, axis=3)
+
+    # Remove 4th dimension
+    atlas_predictions = np.squeeze(atlas_np.mode)
+    atlas_probabilities = np.squeeze(atlas_np.count)/20
+
+    # Converts atlas back in simpleITK image
+    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
+    image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
+
+    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_prediction.nii.gz')
+    sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
+
+    return zip(image_prediction, image_probabilities)

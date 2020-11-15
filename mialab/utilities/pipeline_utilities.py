@@ -233,7 +233,6 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
 
     if id_ == '100307':
         images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
-        display_slice(images_to_plot, 100)
 
     # construct pipeline for T2w image pre-processing
     pipeline_t2 = fltr.FilterPipeline()
@@ -441,7 +440,7 @@ def create_atlas(images):
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
     image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
 
-    sitk.WriteImage(image_prediction, 'C:\\BME\\3_semester\\MIALab\\atlas_prediction_non_rigid.nii.gz')
-    sitk.WriteImage(image_probabilities, 'C:\\BME\\3_semester\\MIALab\\atlas_probabilities_non_rigid.nii.gz')
+    sitk.WriteImage(image_prediction, 'atlas_prediction_non_rigid.nii.gz')
+    sitk.WriteImage(image_probabilities, 'atlas_probabilities_non_rigid.nii.gz')
 
     return

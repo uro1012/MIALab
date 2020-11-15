@@ -51,44 +51,48 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
 
-    print('-' * 5, 'Training...')
-
     # crawl the training image directories
     crawler = futil.FileSystemDataCrawler(data_train_dir,
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
 
+    is_non_rigid = True
+    atlas_based_seg = True
+
     pre_process_params = {'skullstrip_pre': False,
                           'normalization_pre': True,
                           'registration_pre': True,
-                          'non_rigid_registration': True,
+                          'non_rigid_registration': is_non_rigid,
                           'coordinates_feature': True,
                           'intensity_feature': False,
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
-    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+    if atlas_based_seg:
+        # Load atlas files
+        if is_non_rigid:
+            predictions = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.nii.gz'))
+            probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.nii.gz'))
+        else:
+            predictions = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_affine.nii.gz'))
+            probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_affine.nii.gz'))
+    else:
+        print('-' * 5, 'Training...')
+        images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+        # generate feature matrix and label vector
+        data_train = np.concatenate([img.feature_matrix[0] for img in images])
+        labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
 
+        forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
+                                                    n_estimators=10,
+                                                    max_depth=10)
+        start_time = timeit.default_timer()
+        forest.fit(data_train, labels_train)
+        print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
     # Create a atlas with the GroundTruth
     # putil.create_atlas(images)
-
-    # Load atlas files
-    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.nii.gz'))
-    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.nii.gz'))
-
-    # generate feature matrix and label vector
-    # data_train = np.concatenate([img.feature_matrix[0] for img in images])
-    # labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
-
-    # forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
-    #                                           n_estimators=10,
-    #                                           max_depth=10)
-
-    start_time = timeit.default_timer()
-    # forest.fit(data_train, labels_train)
-    print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
     # create a result directory with timestamp
     t = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -118,26 +122,25 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     for img in images_test:
         print('-' * 10, 'Testing', img.id_)
 
-        start_time = timeit.default_timer()
-        # predictions = forest.predict(img.feature_matrix[0])
-        probabilities = atlas_probabilities
-        predictions = atlas_prediction
+        if atlas_based_seg:
+            image_prediction = predictions
+            image_prediction.SetOrigin(img.image_properties.origin)
+            image_prediction.SetSpacing(img.image_properties.spacing)
+            image_prediction.SetDirection(img.image_properties.direction)
 
-        print(' Time elapsed:', timeit.default_timer() - start_time, 's')
-
-        # convert prediction and probabilities back to SimpleITK images
-        # image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
-        #                                                                img.image_properties)
-        # image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
-        image_prediction = predictions
-        image_prediction.SetOrigin(img.image_properties.origin)
-        image_prediction.SetSpacing(img.image_properties.spacing)
-        image_prediction.SetDirection(img.image_properties.direction)
-
-        image_probabilities = probabilities
-        image_probabilities.SetOrigin(img.image_properties.origin)
-        image_probabilities.SetSpacing(img.image_properties.spacing)
-        image_probabilities.SetDirection(img.image_properties.direction)
+            image_probabilities = probabilities
+            image_probabilities.SetOrigin(img.image_properties.origin)
+            image_probabilities.SetSpacing(img.image_properties.spacing)
+            image_probabilities.SetDirection(img.image_properties.direction)
+        else:
+            start_time = timeit.default_timer()
+            predictions = forest.predict(img.feature_matrix[0])
+            probabilities = forest.predict_proba(img.feature_matrix[0])
+            print(' Time elapsed:', timeit.default_timer() - start_time, 's')
+            # convert prediction and probabilities back to SimpleITK images
+            image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
+                                                                            img.image_properties)
+            image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
 
         # evaluate segmentation without post-processing
         evaluator.evaluate(image_prediction, img.images[structure.BrainImageTypes.GroundTruth], img.id_)
@@ -150,8 +153,6 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     images_post_processed = putil.post_process_batch(images_test, images_prediction, images_probabilities,
                                                      post_process_params, multi_process=False)
 
-    # images_post_processed = putil.post_process_batch(images_test, images_prediction,
-    #                                                 post_process_params, multi_process=False)
 
 
     for i, img in enumerate(images_test):

@@ -384,6 +384,24 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
     return pp_images
 
 
+def findTransform(fixed, moving):
+    moving = sitk.Cast(sitk.RescaleIntensity(moving), sitk.sitkFloat32)
+
+    # non-Rigid Registration elastix
+    elastixImageFilter = sitk.ElastixImageFilter()
+    elastixImageFilter.LogToConsoleOff()
+    elastixImageFilter.SetFixedImage(fixed)
+    elastixImageFilter.SetMovingImage(moving)
+
+    parameterMapVector = sitk.VectorOfParameterMap()
+    parameterMapVector.append(sitk.GetDefaultParameterMap("affine"))
+    parameterMapVector.append(sitk.GetDefaultParameterMap("bspline"))
+    elastixImageFilter.SetParameterMap(parameterMapVector)
+    elastixImageFilter.Execute()
+    transformixParameter = elastixImageFilter.GetTransformParameterMap()
+    return transformixParameter
+
+
 def display_slice(images, slice, enable_plot=1):
     fig = plt.figure(figsize=(8, 8))
 

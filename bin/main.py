@@ -58,15 +58,18 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
+
     pre_process_params = {'skullstrip_pre': False,
                           'normalization_pre': True,
                           'registration_pre': True,
+                          'non_rigid_registration': False,
                           'coordinates_feature': True,
                           'intensity_feature': False,
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
     # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+
 
     # Create a atlas with the GroundTruth
     # putil.create_atlas(images)
@@ -79,7 +82,6 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])
     # labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
 
-    warnings.warn('Random forest parameters not properly set.')
     # forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
     #                                           n_estimators=10,
     #                                           max_depth=10)
@@ -137,7 +139,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
         image_probabilities.SetSpacing(img.image_properties.spacing)
         image_probabilities.SetDirection(img.image_properties.direction)
 
-        #evaluate segmentation without post-processing
+        # evaluate segmentation without post-processing
         evaluator.evaluate(image_prediction, img.images[structure.BrainImageTypes.GroundTruth], img.id_)
 
         images_prediction.append(image_prediction)
@@ -146,10 +148,11 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # post-process segmentation and evaluate with post-processing
     post_process_params = {'simple_post': True}
     images_post_processed = putil.post_process_batch(images_test, images_prediction, images_probabilities,
-                                                      post_process_params, multi_process=True)
+                                                     post_process_params, multi_process=False)
 
     # images_post_processed = putil.post_process_batch(images_test, images_prediction,
     #                                                 post_process_params, multi_process=False)
+
 
     for i, img in enumerate(images_test):
         evaluator.evaluate(images_post_processed[i], img.images[structure.BrainImageTypes.GroundTruth],

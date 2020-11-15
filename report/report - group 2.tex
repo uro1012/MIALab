@@ -7,7 +7,6 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{lipsum}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
@@ -26,26 +25,18 @@
 \maketitle
 
 \begin{abstract}
-% write abstract here
+\input{chapters/abstract}
 \end{abstract}
 
-\begin{IEEEkeywords}
+%\begin{IEEEkeywords}
 % needed?
-\end{IEEEkeywords}
+%\end{IEEEkeywords}
 
-\section{Introduction}
+% 
 \input{chapters/introduction}
-
-\section{Method}
 \input{chapters/method}
-
-\section{Results}
 \input{chapters/results}
-
-\section*{Conclusion}
 \input{chapters/conclusion}
-
-
 \input{chapters/references}
 
 \end{document}

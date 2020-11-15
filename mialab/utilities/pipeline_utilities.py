@@ -441,7 +441,7 @@ def create_atlas(images):
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
     image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
 
-    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_prediction.nii.gz')
-    sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
+    sitk.WriteImage(image_prediction, 'C:\\BME\\3_semester\\MIALab\\atlas_prediction_non_rigid.nii.gz')
+    sitk.WriteImage(image_probabilities, 'C:\\BME\\3_semester\\MIALab\\atlas_probabilities_non_rigid.nii.gz')
 
     return

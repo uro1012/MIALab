@@ -62,7 +62,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_process_params = {'skullstrip_pre': False,
                           'normalization_pre': True,
                           'registration_pre': True,
-                          'non_rigid_registration': False,
+                          'non_rigid_registration': True,
                           'coordinates_feature': True,
                           'intensity_feature': False,
                           'gradient_intensity_feature': False}
@@ -75,8 +75,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # putil.create_atlas(images)
 
     # Load atlas files
-    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
-    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
+    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.nii.gz'))
+    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.nii.gz'))
 
     # generate feature matrix and label vector
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])
@@ -110,7 +110,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_process_params['training'] = False
     images_test = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
-    putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
+    # putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
 
     images_prediction = []
     images_probabilities = []

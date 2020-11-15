@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 
 # set list of repos manually
-repo = ["2020-09-26-02-54-03", "2020-10-30-13-36-55"]
+repo = ["AB_Affine", "AB_Non_Rigid", "ML_Affine", "ML_Non_Rigid"]
 
 # set x labels
-x_labels = ["ML", "Atlas"]
+x_labels = ["Atlas Aff", "Atlas NR", "ML Aff", "ML NR"]
 
 
 def main():
@@ -22,9 +22,9 @@ def main():
     dice = [[0] * len(labels) for i in range(len(repo))]
     hdrfdst = [[0] * len(labels) for i in range(len(repo))]
 
-    fig, axs = plt.subplots(2, 5)
-    axs[0, 0].set(ylabel='Dice')
-    axs[1, 0].set(ylabel='Hausdorff')
+    fig, axs = plt.subplots(2, 5, figsize=(16, 10))
+    axs[0, 0].set_ylabel('Dice', fontsize=20)
+    axs[1, 0].set_ylabel('Hausdorff', fontsize=20)
 
     for n in range(len(repo)):
         path = "mia-result/" + repo[n] + "/results.csv"
@@ -36,14 +36,13 @@ def main():
 
     for i in range(len(labels)):
         axs[0, i].boxplot([d[i] for d in dice])
-        axs[0, i].set_title(labels[i])
-        axs[0, i].set_xticklabels(x_labels)
+        axs[0, i].set_title(labels[i], fontsize=16)
+        axs[0, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
 
         axs[1, i].boxplot([d[i] for d in hdrfdst])
-        axs[1, i].set_title(labels[i])
-        axs[1, i].set_xticklabels(x_labels)
+        axs[1, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
 
-    plt.savefig("mia-result/" + repo[-1] + "/boxplot.png")
+    plt.savefig("mia-result/boxplot.png")
     plt.show()
 
 

@@ -245,3 +245,6 @@ exercise/randomforest_plots/
 
 # PyCharm
 .idea/
+
+# MS Office
+~*

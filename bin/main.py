@@ -57,7 +57,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
 
-    is_non_rigid = False
+    is_non_rigid = True
     atlas_based_seg = False
 
     pre_process_params = {'skullstrip_pre': True,
@@ -65,8 +65,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'registration_pre': True,
                           'non_rigid_registration': is_non_rigid,
                           'coordinates_feature': True,
-                          'intensity_feature': False,
-                          'gradient_intensity_feature': False}
+                          'intensity_feature': True,
+                          'gradient_intensity_feature': True}
 
     # load images for training and pre-process
     if atlas_based_seg:

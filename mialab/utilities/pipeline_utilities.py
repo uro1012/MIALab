@@ -244,9 +244,9 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     if kwargs.get('normalization_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageNormalization())
 
-    #images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
-    #images_to_plot.append(atlas_t1)
-    #display_slice(images_to_plot, 100)
+    images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+    images_to_plot.append(atlas_t1)
+    display_slice(images_to_plot, 100)
 
     # execute pipeline on the T2w image
     img.images[structure.BrainImageTypes.T2w] = pipeline_t2.execute(img.images[structure.BrainImageTypes.T2w])
@@ -402,7 +402,7 @@ def findTransform(fixed, moving):
     return transformixParameter
 
 
-def display_slice(images, slice, seq_plot=True):
+def display_slice(images, slice, seq_plot=False):
     if seq_plot:
         fig = plt.figure(figsize=(8, 8))
 
@@ -416,14 +416,14 @@ def display_slice(images, slice, seq_plot=True):
             plt.imshow(image_2d_np, interpolation='nearest')
             plt.draw()
     else:
-        image_3d_np1 = sitk.GetArrayFromImage(images[0])
+        image_3d_np1 = sitk.GetArrayFromImage(images[1])
         image_2d_np1 = image_3d_np1[slice, :, :]
-        image_3d_np2 = sitk.GetArrayFromImage(images[1])
+        image_3d_np2 = sitk.GetArrayFromImage(images[2])
         image_2d_np2 = image_3d_np2[slice, :, :]
 
-        image = np.zeros([image_2d_np1.shape[0], image_2d_np1.shape[1], 3])
-        image[:, :, 0] = image_2d_np1
-        image[:, :, 1] = image_2d_np2/2.0
+        image = np.zeros([233, 197, 3])
+        image[:, :, 0] = image_2d_np1/4.0
+        image[:, :, 1] = image_2d_np2/4.0
         plt.imshow(image)
     plt.show()
 

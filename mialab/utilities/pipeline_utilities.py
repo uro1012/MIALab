@@ -231,9 +231,6 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     # execute pipeline on the T1w image
     img.images[structure.BrainImageTypes.T1w] = pipeline_t1.execute(img.images[structure.BrainImageTypes.T1w])
 
-    if id_ == '100307':
-        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
-
     # construct pipeline for T2w image pre-processing
     pipeline_t2 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
@@ -246,6 +243,10 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
                               len(pipeline_t2.filters) - 1)
     if kwargs.get('normalization_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageNormalization())
+
+    #images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+    #images_to_plot.append(atlas_t1)
+    #display_slice(images_to_plot, 100)
 
     # execute pipeline on the T2w image
     img.images[structure.BrainImageTypes.T2w] = pipeline_t2.execute(img.images[structure.BrainImageTypes.T2w])
@@ -401,13 +402,12 @@ def findTransform(fixed, moving):
     return transformixParameter
 
 
-def display_slice(images, slice, enable_plot=1):
-    fig = plt.figure(figsize=(8, 8))
+def display_slice(images, slice, seq_plot=True):
+    if seq_plot:
+        fig = plt.figure(figsize=(8, 8))
 
-    n_row_plot = 2
-    n_col_plot = 5
-
-    if enable_plot:
+        n_row_plot = 2
+        n_col_plot = 5
         for i in range(1, len(images)+1):
             fig.add_subplot(n_row_plot, n_col_plot, i)
             image_3d_np = sitk.GetArrayFromImage(images[i-1])
@@ -415,7 +415,16 @@ def display_slice(images, slice, enable_plot=1):
 
             plt.imshow(image_2d_np, interpolation='nearest')
             plt.draw()
+    else:
+        image_3d_np1 = sitk.GetArrayFromImage(images[0])
+        image_2d_np1 = image_3d_np1[slice, :, :]
+        image_3d_np2 = sitk.GetArrayFromImage(images[1])
+        image_2d_np2 = image_3d_np2[slice, :, :]
 
+        image = np.zeros([image_2d_np1.shape[0], image_2d_np1.shape[1], 3])
+        image[:, :, 0] = image_2d_np1
+        image[:, :, 1] = image_2d_np2/2.0
+        plt.imshow(image)
     plt.show()
 
 

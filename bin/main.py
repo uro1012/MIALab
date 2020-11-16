@@ -57,10 +57,10 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
 
-    is_non_rigid = True
-    atlas_based_seg = True
+    is_non_rigid = False
+    atlas_based_seg = False
 
-    pre_process_params = {'skullstrip_pre': False,
+    pre_process_params = {'skullstrip_pre': True,
                           'normalization_pre': True,
                           'registration_pre': True,
                           'non_rigid_registration': is_non_rigid,

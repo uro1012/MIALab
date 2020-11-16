@@ -36,10 +36,12 @@ def main():
 
     for i in range(len(labels)):
         axs[0, i].boxplot([d[i] for d in dice])
+        axs[0, i].set_ylim(0, 1)
         axs[0, i].set_title(labels[i], fontsize=16)
         axs[0, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
 
         axs[1, i].boxplot([d[i] for d in hdrfdst])
+        axs[1, i].set_ylim(0, np.max(hdrfdst))
         axs[1, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
 
     plt.savefig("mia-result/boxplot.png")

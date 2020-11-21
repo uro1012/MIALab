@@ -57,7 +57,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
 
-    is_non_rigid = True
+    is_non_rigid = False
     atlas_based_seg = False
 
     pre_process_params = {'skullstrip_pre': True,
@@ -86,7 +86,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
         forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
                                                     n_estimators=10,
-                                                    max_depth=10)
+                                                    max_depth=40)
         start_time = timeit.default_timer()
         forest.fit(data_train, labels_train)
         print(' Time elapsed:', timeit.default_timer() - start_time, 's')

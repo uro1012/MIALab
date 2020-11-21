@@ -244,9 +244,9 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     if kwargs.get('normalization_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageNormalization())
 
-    images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
-    images_to_plot.append(atlas_t1)
-    display_slice(images_to_plot, 100)
+    # images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+    # images_to_plot.append(atlas_t1)
+    # display_slice(images_to_plot, 100)
 
     # execute pipeline on the T2w image
     img.images[structure.BrainImageTypes.T2w] = pipeline_t2.execute(img.images[structure.BrainImageTypes.T2w])

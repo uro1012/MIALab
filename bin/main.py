@@ -51,22 +51,28 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
 
+    pre_processed = False
+    is_non_rigid = False
+    atlas_based_seg = True
+
     # crawl the training image directories
     crawler = futil.FileSystemDataCrawler(data_train_dir,
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
-                                          futil.DataDirectoryFilter())
+                                          futil.DataDirectoryFilter(),
+                                          pre_processed=pre_processed,
+                                          is_non_rigid=is_non_rigid)
 
-    is_non_rigid = False
-    atlas_based_seg = False
-
-    pre_process_params = {'skullstrip_pre': True,
-                          'normalization_pre': True,
-                          'registration_pre': True,
-                          'non_rigid_registration': is_non_rigid,
-                          'coordinates_feature': True,
-                          'intensity_feature': True,
-                          'gradient_intensity_feature': True}
+    if atlas_based_seg and pre_processed:
+        pre_process_params = None
+    else:
+        pre_process_params = {'skullstrip_pre': not pre_processed,
+                              'normalization_pre': not pre_processed,
+                              'registration_pre': not pre_processed,
+                              'non_rigid_registration': is_non_rigid,
+                              'coordinates_feature': not atlas_based_seg,
+                              'intensity_feature': not atlas_based_seg,
+                              'gradient_intensity_feature': not atlas_based_seg}
 
     # load images for training and pre-process
     if atlas_based_seg:
@@ -108,10 +114,13 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     crawler = futil.FileSystemDataCrawler(data_test_dir,
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
-                                          futil.DataDirectoryFilter())
+                                          futil.DataDirectoryFilter(),
+                                          pre_processed=pre_processed,
+                                          is_non_rigid=is_non_rigid)
 
     # load images for testing and pre-process
-    pre_process_params['training'] = False
+    if not atlas_based_seg:
+        pre_process_params['training'] = False
     images_test = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
     # putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)

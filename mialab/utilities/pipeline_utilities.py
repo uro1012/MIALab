@@ -70,15 +70,18 @@ class FeatureExtractor:
             structure.BrainImage: The image with extracted features.
         """
         # warnings.warn('No features from T2-weighted image extracted.')
+        generateFeatureMatrix = False
 
         if self.coordinates_feature:
             atlas_coordinates = fltr_feat.AtlasCoordinates()
             self.img.feature_images[FeatureImageTypes.ATLAS_COORD] = \
                 atlas_coordinates.execute(self.img.images[structure.BrainImageTypes.T1w])
+            generateFeatureMatrix = True
 
         if self.intensity_feature:
             self.img.feature_images[FeatureImageTypes.T1w_INTENSITY] = self.img.images[structure.BrainImageTypes.T1w]
             self.img.feature_images[FeatureImageTypes.T2w_INTENSITY] = self.img.images[structure.BrainImageTypes.T2w]
+            generateFeatureMatrix = True
 
         if self.gradient_intensity_feature:
             # compute gradient magnitude images
@@ -86,8 +89,10 @@ class FeatureExtractor:
                 sitk.GradientMagnitude(self.img.images[structure.BrainImageTypes.T1w])
             self.img.feature_images[FeatureImageTypes.T2w_GRADIENT_INTENSITY] = \
                 sitk.GradientMagnitude(self.img.images[structure.BrainImageTypes.T2w])
+            generateFeatureMatrix = True
 
-        self._generate_feature_matrix()
+        if generateFeatureMatrix:
+            self._generate_feature_matrix()
 
         return self.img
 
@@ -190,6 +195,10 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
 
     img = {img_key: sitk.ReadImage(path) for img_key, path in paths.items()}
 
+    if not kwargs:
+        img = structure.BrainImage(id_, path, img, None, None)
+        return img
+
     is_non_rigid = False
     if kwargs.get('non_rigid_registration', False):
         is_non_rigid = True
@@ -199,6 +208,8 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
                     sitk.ReadParameterFile(path_to_parameterMap + '_1.txt'))
 
     img = structure.BrainImage(id_, path, img, transform, parameterMap)
+
+
 
     if id_ == '100307':
         images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
@@ -345,8 +356,10 @@ def pre_process_batch(data_batch: t.Dict[structure.BrainImageTypes, structure.Br
     Returns:
         List[structure.BrainImage]: A list of images.
     """
+
     if pre_process_params is None:
         pre_process_params = {}
+
 
     params_list = list(data_batch.items())
     if multi_process:
@@ -451,5 +464,4 @@ def create_atlas(images):
 
     sitk.WriteImage(image_prediction, 'atlas_prediction_non_rigid.nii.gz')
     sitk.WriteImage(image_probabilities, 'atlas_probabilities_non_rigid.nii.gz')
-
     return

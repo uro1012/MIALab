@@ -77,6 +77,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load images for training and pre-process
     if atlas_based_seg:
         # Load atlas files
+        images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
         if is_non_rigid:
             predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.npy'))
             probabilities = np.load(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.npy'))
@@ -131,6 +132,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     for img in images_test:
         print('-' * 10, 'Testing', img.id_)
 
+        predictions, probabilities = putil.global_weighted_atlas(img, images)
+
         if not atlas_based_seg:
             start_time = timeit.default_timer()
             predictions = forest.predict(img.feature_matrix[0])
@@ -179,7 +182,6 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
     # clear results such that the evaluator is ready for the next evaluation
     evaluator.clear()
-
 
 if __name__ == "__main__":
     """The program's entry point."""

@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 from scipy import stats
+from sklearn.utils.extmath import weighted_mode
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
@@ -466,3 +467,35 @@ def create_atlas(images, isNonRigid):
         np.save("atlas_prediction_affine.npy", atlas_predictions)
         np.save("atlas_probabilitie_affine.npy", atlas_probabilities)
     return
+
+def global_weighted_atlas(target, atlases):
+    metricsT1w = metric.MeanSquaredError()
+    metricsT2w = metric.MeanSquaredError()
+    metricsT1w.prediction = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
+    metricsT2w.prediction = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+    mseT1w = []
+    mseT2w = []
+
+    # calculate similarity Mean SquaredError for each atlas
+    for atlas in atlases:
+        metricsT1w.reference = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T1w])
+        metricsT2w.reference = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T2w])
+        mseT1w.append(metricsT1w.calculate())
+        mseT2w.append(metricsT2w.calculate())
+    # calculate norm od MSE and averaging over T1w and T2w
+    norm_mse = 1 - ((mseT1w - min(mseT1w)) / (max(mseT1w) - min(mseT1w)) + (mseT2w - min(mseT2w)) / (max(mseT2w) - min(mseT2w)))/2
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    atlas_np = [sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.GroundTruth]) for atlas in atlases]
+
+    # Stack the images in a 4-D numpy array
+    atlases_np = np.stack(atlas_np, axis=-1)
+
+    # Compile the atlas by taking the most occurring label for each voxel
+    atlas_np = weighted_mode(atlases_np, norm_mse, axis=3)
+
+    # write prediction and probabilities
+    predictions = np.squeeze(atlas_np[0])
+    probabilities = np.squeeze(atlas_np[1])/(sum(norm_mse))
+
+    return predictions, probabilities

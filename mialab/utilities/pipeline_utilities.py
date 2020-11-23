@@ -441,7 +441,7 @@ def display_slice(images, slice, seq_plot=False):
     plt.show()
 
 
-def create_atlas(images):
+def create_atlas(images, isNonRigid):
     # Creates a 4D array with all the training groundtruth
     images_np = None
 
@@ -458,10 +458,11 @@ def create_atlas(images):
     atlas_predictions = np.squeeze(atlas_np.mode)
     atlas_probabilities = np.squeeze(atlas_np.count)/len(images)
 
-    # Converts atlas back in simpleITK image
-    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
-    image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
-
-    sitk.WriteImage(image_prediction, 'atlas_prediction_non_rigid.nii.gz')
-    sitk.WriteImage(image_probabilities, 'atlas_probabilities_non_rigid.nii.gz')
+    # Save atlas
+    if isNonRigid:
+        np.save("atlas_prediction_non_rigid.npy", atlas_predictions)
+        np.save("atlas_probabilitie_non_rigid.npy", atlas_probabilities)
+    else:
+        np.save("atlas_prediction_affine.npy", atlas_predictions)
+        np.save("atlas_probabilitie_affine.npy", atlas_probabilities)
     return

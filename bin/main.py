@@ -51,8 +51,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
 
-    pre_processed = False
-    is_non_rigid = False
+    pre_processed = True
+    is_non_rigid = True
     atlas_based_seg = True
 
     # crawl the training image directories
@@ -78,11 +78,11 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     if atlas_based_seg:
         # Load atlas files
         if is_non_rigid:
-            predictions = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.nii.gz'))
-            probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.nii.gz'))
+            predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.npy'))
+            probabilities = np.load(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.npy'))
         else:
-            predictions = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction_affine.nii.gz'))
-            probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities_affine.nii.gz'))
+            predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_affine.npy'))
+            probabilities = np.load(os.path.join(data_atlas_dir, 'atlas_probabilities_affine.npy'))
     else:
         print('-' * 5, 'Training...')
         images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
@@ -98,7 +98,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
         print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
     # Create a atlas with the GroundTruth
-    # putil.create_atlas(images)
+    # putil.create_atlas(images,is_non_rigid)
 
     # create a result directory with timestamp
     t = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -131,25 +131,15 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     for img in images_test:
         print('-' * 10, 'Testing', img.id_)
 
-        if atlas_based_seg:
-            image_prediction = predictions
-            image_prediction.SetOrigin(img.image_properties.origin)
-            image_prediction.SetSpacing(img.image_properties.spacing)
-            image_prediction.SetDirection(img.image_properties.direction)
-
-            image_probabilities = probabilities
-            image_probabilities.SetOrigin(img.image_properties.origin)
-            image_probabilities.SetSpacing(img.image_properties.spacing)
-            image_probabilities.SetDirection(img.image_properties.direction)
-        else:
+        if not atlas_based_seg:
             start_time = timeit.default_timer()
             predictions = forest.predict(img.feature_matrix[0])
             probabilities = forest.predict_proba(img.feature_matrix[0])
             print(' Time elapsed:', timeit.default_timer() - start_time, 's')
-            # convert prediction and probabilities back to SimpleITK images
-            image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
-                                                                            img.image_properties)
-            image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
+        # convert prediction and probabilities back to SimpleITK images
+        image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
+                                                                        img.image_properties)
+        image_probabilities = conversion.NumpySimpleITKImageBridge.convert(probabilities, img.image_properties)
 
         # evaluate segmentation without post-processing
         evaluator.evaluate(image_prediction, img.images[structure.BrainImageTypes.GroundTruth], img.id_)

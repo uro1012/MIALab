@@ -223,7 +223,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
 
     if id_ == '100307':
         images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
-        display_slice(images_to_plot, 100)
+        # display_slice(images_to_plot, 100)
 
     # construct pipeline for T2w image pre-processing
     pipeline_t2 = fltr.FilterPipeline()
@@ -393,8 +393,6 @@ def display_slice(images, slice, enable_plot=1):
 
 
 def create_atlas(images):
-    # Creates a 4D array with all the training groundtruth
-    images_np = None
 
     # Get the list of GroundTruth and converts the image in numpy format
     image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
@@ -413,7 +411,61 @@ def create_atlas(images):
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
     image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
 
-    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_prediction.nii.gz')
-    sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
+    repo = '../data/atlas/'
+    sitk.WriteImage(image_prediction, repo + 'atlas_prediction.nii.gz')
+    sitk.WriteImage(image_probabilities, repo + 'atlas_probabilities.nii.gz')
 
-    return
+
+def create_weighted_atlas(images, labels_num, local_weights=False):
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_gt_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+    images_t1_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T1w]) for img in images]
+    atlas_t1_np = sitk.GetArrayFromImage(atlas_t1)
+    # print("atlas_t1_np:", np.shape(atlas_t1_np))
+
+    # Stack the images in a 4-D numpy array
+    images_gt_np = np.stack(images_gt_np, axis=-1)
+    images_t1_np = np.stack(images_t1_np, axis=-1)
+
+    if local_weights:
+        weights_np = [similarity_local(image_t1, atlas_t1_np) for image_t1 in images_t1_np.transpose((3, 0, 1, 2))]
+    else:
+        weights_np = [similarity_global(image_t1, atlas_t1_np) for image_t1 in images_t1_np.transpose((3, 0, 1, 2))]
+
+    votes_np = np.zeros( (labels_num, atlas_t1_np.shape[0] * atlas_t1_np.shape[1] * atlas_t1_np.shape[2]) )
+    for i in range(len(images_gt_np.transpose((3, 0, 1, 2)))):
+        image_gt = images_gt_np[:, :, :, i]
+        image_gt = np.reshape(image_gt, image_gt.shape[0] * image_gt.shape[1] * image_gt.shape[2])
+        for j in range(len(image_gt)):
+            votes_np[int(image_gt[j]), j] += weights_np[i]
+
+    atlas_predictions = np.reshape(np.argmax(votes_np, axis=0), atlas_t1_np.shape)
+    atlas_probabilities = np.reshape(np.divide(np.max(votes_np, axis=0), votes_np.sum(axis=0), where=votes_np.sum(axis=0)!=0), atlas_t1_np.shape)
+
+    # Converts atlas back in simpleITK image
+    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
+    image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
+
+    repo = '../data/atlas/'
+    if local_weights:
+        sitk.WriteImage(image_prediction, repo + 'atlas_local_weights_prediction.nii.gz')
+        sitk.WriteImage(image_probabilities, repo + 'atlas_local_weights_probabilities.nii.gz')
+    else:
+        sitk.WriteImage(image_prediction, repo + 'atlas_global_weights_prediction.nii.gz')
+        sitk.WriteImage(image_probabilities, repo + 'atlas_global_weights_probabilities.nii.gz')
+
+
+def similarity_global(image1, image2):
+    epsilon = 0.0001
+    dist = np.square(np.subtract(image1, image2)).mean()
+    if dist < epsilon:
+        dist = epsilon
+    return 1 / dist
+
+
+def similarity_local(image1, image2):
+    epsilon = 0.0001
+    dist = np.square(np.subtract(image1, image2))
+    dist = np.where(dist < epsilon, epsilon)
+    return 1 / dist

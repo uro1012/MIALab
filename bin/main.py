@@ -46,6 +46,8 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     """
 
     np.random.seed(42)  # set fixed seed
+    weighted_atlas = True
+    local_weights = False
 
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
@@ -57,7 +59,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                                           LOADING_KEYS,
                                           futil.BrainImageFilePathGenerator(),
                                           futil.DataDirectoryFilter())
-    pre_process_params = {'skullstrip_pre': False,
+    pre_process_params = {'skullstrip_pre': True,
                           'normalization_pre': True,
                           'registration_pre': True,
                           'coordinates_feature': True,
@@ -65,14 +67,25 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
-    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+    images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
     # Create a atlas with the GroundTruth
-    # putil.create_atlas(images)
+    if weighted_atlas :
+        putil.create_weighted_atlas(images, labels_num=6, local_weights=local_weights)
+    else:
+        putil.create_atlas(images)
 
     # Load atlas files
-    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
-    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
+    if weighted_atlas:
+        if local_weights:
+            atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_local_weights_prediction.nii.gz'))
+            atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_local_weights_probabilities.nii.gz'))
+        else:
+            atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_global_weights_prediction.nii.gz'))
+            atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_global_weights_probabilities.nii.gz'))
+    else:
+        atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
+        atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
 
     # generate feature matrix and label vector
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])
@@ -107,7 +120,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_process_params['training'] = False
     images_test = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
-    putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
+    # putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
 
     images_prediction = []
     images_probabilities = []

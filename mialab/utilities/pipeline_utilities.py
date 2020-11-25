@@ -422,24 +422,31 @@ def create_weighted_atlas(images, labels_num, local_weights=False):
     images_gt_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
     images_t1_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T1w]) for img in images]
     atlas_t1_np = sitk.GetArrayFromImage(atlas_t1)
-    # print("atlas_t1_np:", np.shape(atlas_t1_np))
 
     # Stack the images in a 4-D numpy array
     images_gt_np = np.stack(images_gt_np, axis=-1)
     images_t1_np = np.stack(images_t1_np, axis=-1)
+    images_num = len(images_gt_np.transpose((3, 0, 1, 2)))
 
+    # Get local or global weights for each image
     if local_weights:
         weights_np = [similarity_local(image_t1, atlas_t1_np) for image_t1 in images_t1_np.transpose((3, 0, 1, 2))]
     else:
         weights_np = [similarity_global(image_t1, atlas_t1_np) for image_t1 in images_t1_np.transpose((3, 0, 1, 2))]
 
+    # Get votes for each label, including individual weights
     votes_np = np.zeros( (labels_num, atlas_t1_np.shape[0] * atlas_t1_np.shape[1] * atlas_t1_np.shape[2]) )
-    for i in range(len(images_gt_np.transpose((3, 0, 1, 2)))):
-        image_gt = images_gt_np[:, :, :, i]
-        image_gt = np.reshape(image_gt, image_gt.shape[0] * image_gt.shape[1] * image_gt.shape[2])
-        for j in range(len(image_gt)):
-            votes_np[int(image_gt[j]), j] += weights_np[i]
+    for i in range(images_num):
+        image_gt = np.reshape(images_gt_np[:, :, :, i], atlas_t1_np.shape[0] * atlas_t1_np.shape[1] * atlas_t1_np.shape[2])
+        if local_weights:
+            weights_np = np.reshape(weights_np, (images_num, atlas_t1_np.shape[0] * atlas_t1_np.shape[1] * atlas_t1_np.shape[2]))
+            for j in range(len(image_gt)):
+                votes_np[int(image_gt[j]), j] += weights_np[i, j]
+        else:
+            for j in range(len(image_gt)):
+                votes_np[int(image_gt[j]), j] += weights_np[i]
 
+    # Make predictions and probabilities
     atlas_predictions = np.reshape(np.argmax(votes_np, axis=0), atlas_t1_np.shape)
     atlas_probabilities = np.reshape(np.divide(np.max(votes_np, axis=0), votes_np.sum(axis=0), where=votes_np.sum(axis=0)!=0), atlas_t1_np.shape)
 
@@ -447,6 +454,7 @@ def create_weighted_atlas(images, labels_num, local_weights=False):
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas_predictions, images[0].image_properties)
     image_probabilities = conversion.NumpySimpleITKImageBridge.convert(atlas_probabilities, images[0].image_properties)
 
+    # Save atlas as image
     repo = '../data/atlas/'
     if local_weights:
         sitk.WriteImage(image_prediction, repo + 'atlas_local_weights_prediction.nii.gz')
@@ -456,16 +464,14 @@ def create_weighted_atlas(images, labels_num, local_weights=False):
         sitk.WriteImage(image_probabilities, repo + 'atlas_global_weights_probabilities.nii.gz')
 
 
-def similarity_global(image1, image2):
-    epsilon = 0.0001
+def similarity_global(image1, image2, epsilon=0.0001):
     dist = np.square(np.subtract(image1, image2)).mean()
     if dist < epsilon:
         dist = epsilon
     return 1 / dist
 
 
-def similarity_local(image1, image2):
-    epsilon = 0.0001
+def similarity_local(image1, image2, epsilon=0.0001):
     dist = np.square(np.subtract(image1, image2))
-    dist = np.where(dist < epsilon, epsilon)
+    dist = np.where(dist < epsilon, epsilon, dist)
     return 1 / dist

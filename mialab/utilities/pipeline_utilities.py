@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 from scipy import stats
+from scipy import special
 from sklearn.utils.extmath import weighted_mode
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
@@ -443,9 +444,6 @@ def display_slice(images, slice, seq_plot=False):
 
 
 def create_atlas(images, isNonRigid):
-    # Creates a 4D array with all the training groundtruth
-    images_np = None
-
     # Get the list of GroundTruth and converts the image in numpy format
     image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
 
@@ -468,34 +466,62 @@ def create_atlas(images, isNonRigid):
         np.save("atlas_probabilitie_affine.npy", atlas_probabilities)
     return
 
+
 def global_weighted_atlas(target, atlases):
     metricsT1w = metric.MeanSquaredError()
     metricsT2w = metric.MeanSquaredError()
-    metricsT1w.prediction = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
-    metricsT2w.prediction = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+    targetT1w = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
+    targetT2w = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+    mask = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.BrainMask])
+    metricsT1w.prediction = targetT1w[mask == 1]
+    metricsT2w.prediction = targetT2w[mask == 1]
+
     mseT1w = []
     mseT2w = []
 
     # calculate similarity Mean SquaredError for each atlas
     for atlas in atlases:
-        metricsT1w.reference = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T1w])
-        metricsT2w.reference = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T2w])
+        atlasT1w = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T1w])
+        atlasT2w = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T2w])
+        metricsT1w.reference = atlasT1w[mask == 1]
+        metricsT2w.reference = atlasT2w[mask == 1]
         mseT1w.append(metricsT1w.calculate())
         mseT2w.append(metricsT2w.calculate())
     # calculate norm od MSE and averaging over T1w and T2w
-    norm_mse = 1 - ((mseT1w - min(mseT1w)) / (max(mseT1w) - min(mseT1w)) + (mseT2w - min(mseT2w)) / (max(mseT2w) - min(mseT2w)))/2
+    softmax_mse = special.softmax(-np.add(mseT1w, mseT2w))
 
     # Get the list of GroundTruth and converts the image in numpy format
-    atlas_np = [sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.GroundTruth]) for atlas in atlases]
+    groundtruth_np = [sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.GroundTruth]) for atlas in atlases]
 
     # Stack the images in a 4-D numpy array
-    atlases_np = np.stack(atlas_np, axis=-1)
+    groundtruth_np = np.stack(groundtruth_np, axis=-1)
 
     # Compile the atlas by taking the most occurring label for each voxel
-    atlas_np = weighted_mode(atlases_np, norm_mse, axis=3)
+    atlas_np = weighted_mode(groundtruth_np, softmax_mse, axis=3)
 
     # write prediction and probabilities
     predictions = np.squeeze(atlas_np[0])
-    probabilities = np.squeeze(atlas_np[1])/(sum(norm_mse))
+    probabilities = np.squeeze(atlas_np[1])
+
+    return predictions, probabilities
+
+
+def local_weighted_atlas(target, atlases):
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_gt_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in atlases]
+    images_t1_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T1w]) for img in atlases]
+    images_t2_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T2w]) for img in atlases]
+    target_t1_np = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
+    target_t2_np = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+
+    # Get local or global weights for each image
+    seT1w = [np.square(np.subtract(target_t1_np, image_t1)) for image_t1 in images_t1_np]
+    seT2w = [np.square(np.subtract(target_t2_np, image_t2)) for image_t2 in images_t2_np]
+    weights_np = special.softmax(-np.add(seT1w, seT2w))
+
+    # Get votes for each label, including individual weights
+    atlas_np = weighted_mode(images_gt_np, weights_np)
+    predictions = np.squeeze(atlas_np[0])
+    probabilities = np.squeeze(atlas_np[1])
 
     return predictions, probabilities

@@ -48,12 +48,16 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
     np.random.seed(42)  # set fixed seed
 
+
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
 
     pre_processed = True
     is_non_rigid = True
-    atlas_based_seg = True
+
+    atlas_based_seg = False
+    weighted_atlas = True
+    local_weights = True
 
     # crawl the training image directories
     crawler = futil.FileSystemDataCrawler(data_train_dir,
@@ -77,8 +81,9 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     # load images for training and pre-process
     if atlas_based_seg:
         # Load atlas files
-        images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
-        if is_non_rigid:
+        if weighted_atlas:
+            images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+        elif is_non_rigid:
             predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.npy'))
             probabilities = np.load(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.npy'))
         else:
@@ -131,10 +136,13 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
     for img in images_test:
         print('-' * 10, 'Testing', img.id_)
-
-        predictions, probabilities = putil.global_weighted_atlas(img, images)
-
-        if not atlas_based_seg:
+        if atlas_based_seg:
+            if weighted_atlas:
+                if local_weights:
+                    predictions, probabilities = putil.local_weighted_atlas(img, images, labels_num=6)
+                else:
+                    predictions, probabilities = putil.global_weighted_atlas(img, images)
+        else:
             start_time = timeit.default_timer()
             predictions = forest.predict(img.feature_matrix[0])
             probabilities = forest.predict_proba(img.feature_matrix[0])

@@ -1,0 +1,94 @@
+Index: mialab/utilities/pipeline_utilities.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- mialab/utilities/pipeline_utilities.py	(revision 5f49061b316351102dcf394aa959c5d49c8bfb06)
++++ mialab/utilities/pipeline_utilities.py	(date 1606939870892)
+@@ -6,6 +6,7 @@
+ 
+ import numpy as np
+ from scipy import stats
++from scipy.ndimage.morphology import distance_transform_edt
+ import pymia.data.conversion as conversion
+ import pymia.filtering.filter as fltr
+ import pymia.evaluation.evaluator as eval_
+@@ -417,3 +418,51 @@
+     sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
+ 
+     return
++
++def create_sba_atlas(images):
++
++    # Get the list of GroundTruth and converts the image in numpy format
++    images_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
++
++    # Init arrays for the single labelled images
++
++    all_single_label_images = []
++
++    # for each label
++    for i in range(6):
++
++        single_label_images = []
++
++        # for each atlas
++        for img in images_np:
++            single_label_image = np.zeros(img.shape, dtype=bool)
++            single_label_image[img == i] = True
++            single_label_images.append(single_label_image)
++
++        all_single_label_images.append(single_label_images)
++
++    all_sed = []
++    sed = np.zeros(images_np[0].shape)
++
++    for i in range(6):
++        for img in all_single_label_images[i]:
++            sed = sed + distance_transform_edt(img) - distance_transform_edt(np.logical_not(img))
++            print('iteration:', i+1, '/5')
++
++        all_sed.append(sed)
++
++    # Stack the SEDs in a 4-D numpy array
++    sed_map_np = np.stack(all_sed, axis=-1)
++
++    atlas = np.argmax(sed_map_np, axis=3)
++
++    # Converts atlas back in simpleITK image
++    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas, images[0].image_properties)
++
++    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_sba_prediction.nii.gz')
++
++
++
++
++
++
+Index: bin/main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- bin/main.py	(revision 5f49061b316351102dcf394aa959c5d49c8bfb06)
++++ bin/main.py	(date 1606738437024)
+@@ -65,14 +65,15 @@
+                           'gradient_intensity_feature': False}
+ 
+     # load images for training and pre-process
+-    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
++    images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+ 
+     # Create a atlas with the GroundTruth
+-    # putil.create_atlas(images)
++    putil.create_sba_atlas(images)
+ 
+     # Load atlas files
+-    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
+-    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
++    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_sba_prediction.nii.gz'))
++    # atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
++    putil.display_slice(atlas_prediction, 100)
+ 
+     # generate feature matrix and label vector
+     # data_train = np.concatenate([img.feature_matrix[0] for img in images])

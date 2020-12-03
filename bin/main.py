@@ -139,7 +139,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
         if atlas_based_seg:
             if weighted_atlas:
                 if local_weights:
-                    predictions, probabilities = putil.local_weighted_atlas(img, images, labels_num=6)
+                    predictions, probabilities = putil.local_weighted_atlas(img, images)
                 else:
                     predictions, probabilities = putil.global_weighted_atlas(img, images)
         else:

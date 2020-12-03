@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 from scipy import stats
+from scipy.ndimage.morphology import distance_transform_edt
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
@@ -417,3 +418,51 @@ def create_atlas(images):
     sitk.WriteImage(image_probabilities, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_probabilities.nii.gz')
 
     return
+
+def create_sba_atlas(images):
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Init arrays for the single labelled images
+
+    all_single_label_images = []
+
+    # for each label
+    for i in range(6):
+
+        single_label_images = []
+
+        # for each atlas
+        for img in images_np:
+            single_label_image = np.zeros(img.shape, dtype=bool)
+            single_label_image[img == i] = True
+            single_label_images.append(single_label_image)
+
+        all_single_label_images.append(single_label_images)
+
+    all_sed = []
+    sed = np.zeros(images_np[0].shape)
+
+    for i in range(6):
+        for img in all_single_label_images[i]:
+            sed = sed + distance_transform_edt(img) - distance_transform_edt(np.logical_not(img))
+            print('iteration:', i+1, '/5')
+
+        all_sed.append(sed)
+
+    # Stack the SEDs in a 4-D numpy array
+    sed_map_np = np.stack(all_sed, axis=-1)
+
+    atlas = np.argmax(sed_map_np, axis=3)
+
+    # Converts atlas back in simpleITK image
+    image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas, images[0].image_properties)
+
+    sitk.WriteImage(image_prediction, 'C:\\Users\\Public\\Documents\\Unibe\\Courses\\Medical_Image_Analysis_Lab\\atlas_sba_prediction.nii.gz')
+
+
+
+
+
+

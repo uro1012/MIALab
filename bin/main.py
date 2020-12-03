@@ -65,14 +65,15 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
-    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+    images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
     # Create a atlas with the GroundTruth
-    # putil.create_atlas(images)
+    putil.create_sba_atlas(images)
 
     # Load atlas files
-    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_prediction.nii.gz'))
-    atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
+    atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_sba_prediction.nii.gz'))
+    # atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
+    putil.display_slice(atlas_prediction, 100)
 
     # generate feature matrix and label vector
     # data_train = np.concatenate([img.feature_matrix[0] for img in images])

@@ -375,13 +375,20 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
     return pp_images
 
 
-def display_slice(images, slice, enable_plot=1):
+def display_slice(images, slice, single_plot=1):
     fig = plt.figure(figsize=(8, 8))
 
-    n_row_plot = 2
-    n_col_plot = 5
+    n_row_plot = 5
+    n_col_plot = 2
 
-    if enable_plot:
+    if single_plot:
+        image_3d_np = sitk.GetArrayFromImage(images)
+        image_2d_np = image_3d_np[slice, :, :]
+
+        plt.imshow(image_2d_np, interpolation='nearest')
+        plt.draw()
+
+    else:
         for i in range(1, len(images)+1):
             fig.add_subplot(n_row_plot, n_col_plot, i)
             image_3d_np = sitk.GetArrayFromImage(images[i-1])
@@ -445,16 +452,20 @@ def create_sba_atlas(images):
     sed = np.zeros(images_np[0].shape)
 
     for i in range(6):
+
+        sed = np.zeros(images_np[0].shape)
+
         for img in all_single_label_images[i]:
-            sed = sed + distance_transform_edt(img) - distance_transform_edt(np.logical_not(img))
-            print('iteration:', i+1, '/5')
+            single_sed = - distance_transform_edt(img) + distance_transform_edt(np.logical_not(img))
+            sed = sed + single_sed
+            print('Label ', i, ', voxel [60, 110, 130] = ', single_sed[60, 110, 130])
 
         all_sed.append(sed)
 
     # Stack the SEDs in a 4-D numpy array
     sed_map_np = np.stack(all_sed, axis=-1)
 
-    atlas = np.argmax(sed_map_np, axis=3)
+    atlas = np.argmin(sed_map_np, axis=3)
 
     # Converts atlas back in simpleITK image
     image_prediction = conversion.NumpySimpleITKImageBridge.convert(atlas, images[0].image_properties)

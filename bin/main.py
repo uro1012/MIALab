@@ -65,13 +65,14 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
                           'gradient_intensity_feature': False}
 
     # load images for training and pre-process
-    images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+    # images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
     # Create a atlas with the GroundTruth
-    putil.create_sba_atlas(images)
+    # putil.create_sba_atlas(images)
 
     # Load atlas files
     atlas_prediction = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_sba_prediction.nii.gz'))
+
     # atlas_probabilities = sitk.ReadImage(os.path.join(data_atlas_dir, 'atlas_probabilities.nii.gz'))
     putil.display_slice(atlas_prediction, 100)
 
@@ -108,7 +109,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_process_params['training'] = False
     images_test = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
 
-    putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100)
+    putil.display_slice([img.images[structure.BrainImageTypes.GroundTruth] for img in images_test], 100, single_plot=0)
 
     images_prediction = []
     images_probabilities = []
@@ -118,7 +119,7 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
         start_time = timeit.default_timer()
         # predictions = forest.predict(img.feature_matrix[0])
-        probabilities = atlas_probabilities
+        probabilities = atlas_prediction
         predictions = atlas_prediction
 
         print(' Time elapsed:', timeit.default_timer() - start_time, 's')

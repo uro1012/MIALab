@@ -8,6 +8,7 @@ import numpy as np
 from scipy import stats
 from scipy import special
 from sklearn.utils.extmath import weighted_mode
+from scipy.ndimage.morphology import distance_transform_edt
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
@@ -417,12 +418,19 @@ def findTransform(fixed, moving):
     return transformixParameter
 
 
-def display_slice(images, slice, seq_plot=False):
-    if seq_plot:
-        fig = plt.figure(figsize=(8, 8))
+def display_slice(images, slice, single_plot=1):
+    fig = plt.figure(figsize=(8, 8))
 
-        n_row_plot = 2
-        n_col_plot = 5
+    n_row_plot = 5
+    n_col_plot = 2
+
+    if single_plot:
+        image_3d_np = sitk.GetArrayFromImage(images)
+        image_2d_np = image_3d_np[slice, :, :]
+
+        plt.imshow(image_2d_np, interpolation='nearest')
+        plt.draw()
+    else:
         for i in range(1, len(images)+1):
             fig.add_subplot(n_row_plot, n_col_plot, i)
             image_3d_np = sitk.GetArrayFromImage(images[i-1])
@@ -430,16 +438,6 @@ def display_slice(images, slice, seq_plot=False):
 
             plt.imshow(image_2d_np, interpolation='nearest')
             plt.draw()
-    else:
-        image_3d_np1 = sitk.GetArrayFromImage(images[1])
-        image_2d_np1 = image_3d_np1[slice, :, :]
-        image_3d_np2 = sitk.GetArrayFromImage(images[2])
-        image_2d_np2 = image_3d_np2[slice, :, :]
-
-        image = np.zeros([233, 197, 3])
-        image[:, :, 0] = image_2d_np1/4.0
-        image[:, :, 1] = image_2d_np2/4.0
-        plt.imshow(image)
     plt.show()
 
 
@@ -459,11 +457,11 @@ def create_atlas(images, isNonRigid):
 
     # Save atlas
     if isNonRigid:
-        np.save("atlas_prediction_non_rigid.npy", atlas_predictions)
-        np.save("atlas_probabilitie_non_rigid.npy", atlas_probabilities)
+        np.save("../data/atlas/atlas_prediction_non_rigid.npy", atlas_predictions)
+        np.save("../data/atlas/atlas_probabilitie_non_rigid.npy", atlas_probabilities)
     else:
-        np.save("atlas_prediction_affine.npy", atlas_predictions)
-        np.save("atlas_probabilitie_affine.npy", atlas_probabilities)
+        np.save("../data/atlas/atlas_prediction_affine.npy", atlas_predictions)
+        np.save("../data/atlas/atlas_probabilitie_affine.npy", atlas_probabilities)
     return
 
 
@@ -525,3 +523,48 @@ def local_weighted_atlas(target, atlases):
     probabilities = np.squeeze(atlas_np[1])
 
     return predictions, probabilities
+
+
+def create_sba_atlas(images, isNonRigid):
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Init arrays for the single labelled images
+    all_single_label_images = []
+
+    # for each label
+    for i in range(6):
+        single_label_images = []
+
+        # for each atlas
+        for img in images_np:
+            single_label_image = np.zeros(img.shape, dtype=bool)
+            single_label_image[img == i] = True
+            single_label_images.append(single_label_image)
+
+        all_single_label_images.append(single_label_images)
+
+    all_sed = []
+
+    for i in range(6):
+
+        sed = np.zeros(images_np[0].shape)
+
+        for img in all_single_label_images[i]:
+            single_sed = - distance_transform_edt(img) + distance_transform_edt(np.logical_not(img))
+            sed = sed + single_sed
+            print('Label ', i, ', voxel [60, 110, 130] = ', single_sed[60, 110, 130])
+
+        all_sed.append(sed)
+
+    # Stack the SEDs in a 4-D numpy array
+    sed_map_np = np.stack(all_sed, axis=-1)
+
+    atlas = np.argmin(sed_map_np, axis=3)
+
+    # Save atlas
+    if isNonRigid:
+        np.save("../data/atlas/atlas_prediction_SBA_non_rigid.npy", atlas)
+    else:
+        np.save("../data/atlas/atlas_prediction_SBA_affine.npy", atlas)
+    return

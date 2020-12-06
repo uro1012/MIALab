@@ -55,9 +55,10 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
     pre_processed = True
     is_non_rigid = True
 
-    atlas_based_seg = False
-    weighted_atlas = True
-    local_weights = True
+    atlas_based_seg = True
+    shaped_based_averaging = True
+    weighted_atlas = False
+    local_weights = False
 
     # crawl the training image directories
     crawler = futil.FileSystemDataCrawler(data_train_dir,
@@ -83,6 +84,13 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
         # Load atlas files
         if weighted_atlas:
             images = putil.pre_process_batch(crawler.data, pre_process_params, multi_process=False)
+        if shaped_based_averaging:
+            if is_non_rigid:
+                predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_SBA_non_rigid.npy'))
+                probabilities = predictions
+            else:
+                predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_SBA_affine.npy'))
+                probabilities = predictions
         elif is_non_rigid:
             predictions = np.load(os.path.join(data_atlas_dir, 'atlas_prediction_non_rigid.npy'))
             probabilities = np.load(os.path.join(data_atlas_dir, 'atlas_probabilities_non_rigid.npy'))
@@ -105,6 +113,22 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
     # Create a atlas with the GroundTruth
     # putil.create_atlas(images,is_non_rigid)
+    # putil.create_sba_atlas(images, is_non_rigid)
+
+    # Load atlas files
+    # putil.display_slice(atlas_prediction, 100)
+
+    # generate feature matrix and label vector
+    # data_train = np.concatenate([img.feature_matrix[0] for img in images])
+    # labels_train = np.concatenate([img.feature_matrix[1] for img in images]).squeeze()
+
+    # forest = sk_ensemble.RandomForestClassifier(max_features=images[0].feature_matrix[0].shape[1],
+    #                                           n_estimators=10,
+    #                                           max_depth=10)
+
+    start_time = timeit.default_timer()
+    # forest.fit(data_train, labels_train)
+    print(' Time elapsed:', timeit.default_timer() - start_time, 's')
 
     # create a result directory with timestamp
     t = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -147,6 +171,11 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
             predictions = forest.predict(img.feature_matrix[0])
             probabilities = forest.predict_proba(img.feature_matrix[0])
             print(' Time elapsed:', timeit.default_timer() - start_time, 's')
+
+        start_time = timeit.default_timer()
+
+        print(' Time elapsed:', timeit.default_timer() - start_time, 's')
+
         # convert prediction and probabilities back to SimpleITK images
         image_prediction = conversion.NumpySimpleITKImageBridge.convert(predictions,
                                                                         img.image_properties)

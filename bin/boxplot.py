@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 
 # set list of repos manually
-repo = ["AB_Affine", "AB_Non_Rigid", "ML_Affine", "ML_Non_Rigid"]
+repo = ["AB_Non_Rigid_MV", "AB_Non_Rigid_GW", "AB_Non_Rigid_LW", "AB_Non_Rigid_SBA", "ML_Non_Rigid"]
 
 # set x labels
-x_labels = ["Atlas Aff", "Atlas NR", "ML Aff", "ML NR"]
+x_labels = ["MV", "GW", "LW", "SBA", "ML"]
 
 
 def main():

@@ -18,9 +18,11 @@ To measure the overall performance, several evaluation metrics can be used. The 
 For the registration step, two different solutions have been compared. The first is affine transformation, which which allows translation, rotation and scaling. The second one is non-rigid, which transforms the volumes locally. This can lead to a better matching between the input image and the atlas. For the affine registration of two volumes, the volume to be registered is moved relative to the fixed volume by rotation, translation or scaling. After each displacement a similarity of the volumes is measured. This parameter is minimized by moving the volume further until a minimum is reached. The same is true for a non rigid registration, but there is an additional tuning factor which allows local displacements, rotations and scaling. We used the \textit{Simple Elastix}\footnote{\url{https://github.com/SuperElastix/SimpleElastix}} library to compute the non-rigid transformation. This library uses a B-spline registration to register the two volumes non rigidly.
 
 \subsection*{Segmentation}
-For the segmentation step, several types have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. The other methods were all atlas-based, where the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights.
+For the segmentation step, several types have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. The other methods were all atlas-based, where the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights. In order to make the segmentation smoother, an additional method called Shape based averaging was implemented.
+
+\subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
 \subsubsection*{Global Weighted Voting}
+
 \subsubsection*{Local Weighted Voting}
 \subsubsection*{Shape Based Averaging}
-\subsubsection*{Machine Learning}

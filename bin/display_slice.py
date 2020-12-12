@@ -1,8 +1,8 @@
 import enum
 import os
 import typing as t
-import tkinter as tk
 from tkinter import filedialog
+from sklearn import preprocessing
 
 import numpy as np
 import SimpleITK as sitk
@@ -67,41 +67,53 @@ def display_3planes(image, intersect_point):
     coronal_img = image[::-1, intersect_point[1], :]
     sagital_img = image[::-1, :, intersect_point[2]]
 
-    fig, axs = plt.subplots(2, 2)
 
-    axs[0, 0].imshow(axial_img, interpolation='nearest')
-    axs[0, 0].axis('equal')
-    axs[0, 0].set_title('Axial plane', fontsize=10)
-    axs[0, 0].axis("off")
+    fig = plt.figure(figsize=(6,6))
+    ax1 = fig.add_subplot(2, 2, 1)
+    ax2 = fig.add_subplot(2, 2, 2)
+    ax3 = fig.add_subplot(2, 1, 2)
 
-    axs[0, 1].imshow(coronal_img, interpolation='nearest')
-    axs[0, 1].axis('equal')
-    axs[0, 1].set_title('Coronal plane', fontsize=10)
-    axs[0, 1].axis("off")
+    vmax = np.max(image)
 
-    axs[1, 0].imshow(sagital_img, interpolation='nearest')
-    axs[1, 0].axis('equal')
-    axs[1, 0].set_title('Sagital plane', fontsize=10)
-    axs[1, 0].axis("off")
+    ax1.imshow(axial_img, interpolation='nearest', vmax=vmax, vmin=0)
+    ax1.axis('equal')
+    ax1.set_title('Axial plane', fontsize=10)
+    ax1.axis("off")
+
+    ax2.imshow(coronal_img, interpolation='nearest', vmax=vmax, vmin=0)
+    ax2.axis('equal')
+    ax2.set_title('Coronal plane', fontsize=10)
+    ax2.axis("off")
+
+    ax3.imshow(sagital_img, interpolation='nearest', vmax=vmax, vmin=0)
+    ax3.axis('equal')
+    ax3.set_title('Sagital plane', fontsize=10)
+    ax3.axis("off")
 
     plt.draw()
     plt.show()
 
-    return fig, axs
+    return
 
 
 def main():
     # Display 3 plane image
     filepath = filedialog.askopenfilename()
-    img = load_image(filepath)
+    if filepath[-3:] == 'npy':
+        img = load_image(filepath)
+    else:
+        img = load_image(filepath, img_type='sitk')
     display_3planes(img, [100, 120, 50])
 
     # Display the same slice of two different images
     files = filedialog.askopenfilename(multiple=True)
     imgs = []
     for file in files:
-        imgs.append(load_image(file, img_type='sitk'))
-    display_slice(imgs, 100, n_row_plot=1, n_col_plot=2)
+        if file[-3:] == 'npy':
+            imgs.append(load_image(file))
+        else:
+            imgs.append(load_image(file, img_type='sitk'))
+    display_slice(imgs, 100, n_row_plot=2, n_col_plot=2)
 
 
 if __name__ == '__main__':

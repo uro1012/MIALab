@@ -21,12 +21,20 @@ class PickableAffineTransform:
         transform.SetParameters(self.parameters)
         return transform
 
+class PickableParameterMap:
+    """Represents a transformation that can be pickled."""
+
+    def __init__(self, parameterMap: sitk.ParameterMap):
+        self.parameterMap = parameterMap
+
+    def get_sitk_parameterMap(self):
+        return self.parameterMap
 
 class PicklableBrainImage:
     """Represents a brain image that can be pickled."""
 
     def __init__(self, id_: str, path: str, np_images: dict, image_properties: conversion.ImageProperties,
-                 transform: sitk.Transform):
+                 transform: sitk.Transform, parameterMap: sitk.ParameterMap):
         """Initializes a new instance of the :class:`BrainImage <data.structure.BrainImage>` class.
 
         Args:
@@ -45,6 +53,7 @@ class PicklableBrainImage:
         # where the shape of features is (n, number_of_features) and the shape of labels is (n, 1)
         # with n being the amount of voxels
         self.pickable_transform = PickableAffineTransform(transform)
+        self.pickable_parameterMap = PickableParameterMap(parameterMap)
 
 
 class BrainImageToPicklableBridge:
@@ -70,7 +79,8 @@ class BrainImageToPicklableBridge:
 
         pickable_brain_image = PicklableBrainImage(brain_image.id_, brain_image.path, np_images,
                                                    brain_image.image_properties,
-                                                   brain_image.transformation)
+                                                   brain_image.transformation,
+                                                   brain_image.parameterMap)
         pickable_brain_image.np_feature_images = np_feature_images
         pickable_brain_image.feature_matrix = brain_image.feature_matrix
 
@@ -101,8 +111,9 @@ class PicklableToBrainImageBridge:
                                                                                picklable_brain_image.image_properties)
 
         transform = picklable_brain_image.pickable_transform.get_sitk_transformation()
+        parameterMap = picklable_brain_image.pickable_parameterMap.get_sitk_parameterMap()
 
-        brain_image = structure.BrainImage(picklable_brain_image.id_, picklable_brain_image.path, images, transform)
+        brain_image = structure.BrainImage(picklable_brain_image.id_, picklable_brain_image.path, images, transform, parameterMap)
         brain_image.feature_matrix = picklable_brain_image.feature_matrix
         return brain_image
 

@@ -5,11 +5,16 @@ import typing as t
 import warnings
 
 import numpy as np
+from scipy import stats
+from scipy import special
+from sklearn.utils.extmath import weighted_mode
+from scipy.ndimage.morphology import distance_transform_edt
 import pymia.data.conversion as conversion
 import pymia.filtering.filter as fltr
 import pymia.evaluation.evaluator as eval_
 import pymia.evaluation.metric as metric
 import SimpleITK as sitk
+from matplotlib import pyplot as plt
 
 import mialab.data.structure as structure
 import mialab.filtering.feature_extraction as fltr_feat
@@ -68,15 +73,18 @@ class FeatureExtractor:
             structure.BrainImage: The image with extracted features.
         """
         # warnings.warn('No features from T2-weighted image extracted.')
+        generateFeatureMatrix = False
 
         if self.coordinates_feature:
             atlas_coordinates = fltr_feat.AtlasCoordinates()
             self.img.feature_images[FeatureImageTypes.ATLAS_COORD] = \
                 atlas_coordinates.execute(self.img.images[structure.BrainImageTypes.T1w])
+            generateFeatureMatrix = True
 
         if self.intensity_feature:
             self.img.feature_images[FeatureImageTypes.T1w_INTENSITY] = self.img.images[structure.BrainImageTypes.T1w]
             self.img.feature_images[FeatureImageTypes.T2w_INTENSITY] = self.img.images[structure.BrainImageTypes.T2w]
+            generateFeatureMatrix = True
 
         if self.gradient_intensity_feature:
             # compute gradient magnitude images
@@ -84,8 +92,10 @@ class FeatureExtractor:
                 sitk.GradientMagnitude(self.img.images[structure.BrainImageTypes.T1w])
             self.img.feature_images[FeatureImageTypes.T2w_GRADIENT_INTENSITY] = \
                 sitk.GradientMagnitude(self.img.images[structure.BrainImageTypes.T2w])
+            generateFeatureMatrix = True
 
-        self._generate_feature_matrix()
+        if generateFeatureMatrix:
+            self._generate_feature_matrix()
 
         return self.img
 
@@ -179,20 +189,40 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     """
 
     print('-' * 10, 'Processing', id_)
+    images_to_plot = []
 
     # load image
     path = paths.pop(id_, '')  # the value with key id_ is the root directory of the image
     path_to_transform = paths.pop(structure.BrainImageTypes.RegistrationTransform, '')
+    path_to_parameterMap = paths.pop(structure.BrainImageTypes.RegistrationParameterMap, '')
+
     img = {img_key: sitk.ReadImage(path) for img_key, path in paths.items()}
+
+    if not kwargs:
+        img = structure.BrainImage(id_, path, img, None, None)
+        return img
+
+    is_non_rigid = False
+    if kwargs.get('non_rigid_registration', False):
+        is_non_rigid = True
     transform = sitk.ReadTransform(path_to_transform)
-    img = structure.BrainImage(id_, path, img, transform)
+    # parameterMap = findTransform(atlas_t1, sitk.Mask(img[structure.BrainImageTypes.T1w], img[structure.BrainImageTypes.BrainMask]))
+    parameterMap = (sitk.ReadParameterFile(path_to_parameterMap + '_0.txt'),
+                    sitk.ReadParameterFile(path_to_parameterMap + '_1.txt'))
+
+    img = structure.BrainImage(id_, path, img, transform, parameterMap)
+
+
+
+    if id_ == '100307':
+        images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
 
     # construct pipeline for brain mask registration
     # we need to perform this before the T1w and T2w pipeline because the registered mask is used for skull-stripping
     pipeline_brain_mask = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_brain_mask.add_filter(fltr_prep.ImageRegistration())
-        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, True),
+        pipeline_brain_mask.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_brain_mask.filters) - 1)
 
     # execute pipeline on the brain mask image
@@ -203,7 +233,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_t1 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t1.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation),
+        pipeline_t1.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t1.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t1.add_filter(fltr_prep.SkullStripping())
@@ -219,7 +249,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_t2 = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageRegistration())
-        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation),
+        pipeline_t2.set_param(fltr_prep.ImageRegistrationParameters(atlas_t2, img.transformation, img.parameterMap, is_non_rigid=is_non_rigid),
                               len(pipeline_t2.filters) - 1)
     if kwargs.get('skullstrip_pre', False):
         pipeline_t2.add_filter(fltr_prep.SkullStripping())
@@ -228,6 +258,10 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     if kwargs.get('normalization_pre', False):
         pipeline_t2.add_filter(fltr_prep.ImageNormalization())
 
+    # images_to_plot.append(img.images[structure.BrainImageTypes.T1w])
+    # images_to_plot.append(atlas_t1)
+    # display_slice(images_to_plot, 100)
+
     # execute pipeline on the T2w image
     img.images[structure.BrainImageTypes.T2w] = pipeline_t2.execute(img.images[structure.BrainImageTypes.T2w])
 
@@ -235,7 +269,7 @@ def pre_process(id_: str, paths: dict, **kwargs) -> structure.BrainImage:
     pipeline_gt = fltr.FilterPipeline()
     if kwargs.get('registration_pre', False):
         pipeline_gt.add_filter(fltr_prep.ImageRegistration())
-        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, True),
+        pipeline_gt.set_param(fltr_prep.ImageRegistrationParameters(atlas_t1, img.transformation, img.parameterMap, True, is_non_rigid),
                               len(pipeline_gt.filters) - 1)
 
     # execute pipeline on the ground truth image
@@ -325,8 +359,10 @@ def pre_process_batch(data_batch: t.Dict[structure.BrainImageTypes, structure.Br
     Returns:
         List[structure.BrainImage]: A list of images.
     """
+
     if pre_process_params is None:
         pre_process_params = {}
+
 
     params_list = list(data_batch.items())
     if multi_process:
@@ -360,4 +396,175 @@ def post_process_batch(brain_images: t.List[structure.BrainImage], segmentations
                                              mproc.PostProcessingPickleHelper)
     else:
         pp_images = [post_process(img, seg, prob, **post_process_params) for img, seg, prob in param_list]
+
     return pp_images
+
+
+def findTransform(fixed, moving):
+    moving = sitk.Cast(sitk.RescaleIntensity(moving), sitk.sitkFloat32)
+
+    # non-Rigid Registration elastix
+    elastixImageFilter = sitk.ElastixImageFilter()
+    elastixImageFilter.LogToConsoleOff()
+    elastixImageFilter.SetFixedImage(fixed)
+    elastixImageFilter.SetMovingImage(moving)
+
+    parameterMapVector = sitk.VectorOfParameterMap()
+    parameterMapVector.append(sitk.GetDefaultParameterMap("affine"))
+    parameterMapVector.append(sitk.GetDefaultParameterMap("bspline"))
+    elastixImageFilter.SetParameterMap(parameterMapVector)
+    elastixImageFilter.Execute()
+    transformixParameter = elastixImageFilter.GetTransformParameterMap()
+    return transformixParameter
+
+
+def display_slice(images, slice, single_plot=1):
+    fig = plt.figure(figsize=(8, 8))
+
+    n_row_plot = 5
+    n_col_plot = 2
+
+    if single_plot:
+        image_3d_np = sitk.GetArrayFromImage(images)
+        image_2d_np = image_3d_np[slice, :, :]
+
+        plt.imshow(image_2d_np, interpolation='nearest')
+        plt.draw()
+    else:
+        for i in range(1, len(images)+1):
+            fig.add_subplot(n_row_plot, n_col_plot, i)
+            image_3d_np = sitk.GetArrayFromImage(images[i-1])
+            image_2d_np = image_3d_np[slice, :, :]
+
+            plt.imshow(image_2d_np, interpolation='nearest')
+            plt.draw()
+    plt.show()
+
+
+def create_atlas(images, isNonRigid):
+    # Get the list of GroundTruth and converts the image in numpy format
+    image_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Stack the images in a 4-D numpy array
+    images_np = np.stack(image_np,  axis=-1)
+
+    # Compile the atlas by taking the most occurring label for each voxel
+    atlas_np = stats.mode(images_np, axis=3)
+
+    # Remove 4th dimension
+    atlas_predictions = np.squeeze(atlas_np.mode)
+    atlas_probabilities = np.squeeze(atlas_np.count)/len(images)
+
+    # Save atlas
+    if isNonRigid:
+        np.save("../data/atlas/atlas_prediction_non_rigid.npy", atlas_predictions)
+        np.save("../data/atlas/atlas_probabilitie_non_rigid.npy", atlas_probabilities)
+    else:
+        np.save("../data/atlas/atlas_prediction_affine.npy", atlas_predictions)
+        np.save("../data/atlas/atlas_probabilitie_affine.npy", atlas_probabilities)
+    return
+
+
+def global_weighted_atlas(target, atlases):
+    metricsT1w = metric.MeanSquaredError()
+    metricsT2w = metric.MeanSquaredError()
+    targetT1w = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
+    targetT2w = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+    mask = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.BrainMask])
+    metricsT1w.prediction = targetT1w[mask == 1]
+    metricsT2w.prediction = targetT2w[mask == 1]
+
+    mseT1w = []
+    mseT2w = []
+
+    # calculate similarity Mean SquaredError for each atlas
+    for atlas in atlases:
+        atlasT1w = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T1w])
+        atlasT2w = sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.T2w])
+        metricsT1w.reference = atlasT1w[mask == 1]
+        metricsT2w.reference = atlasT2w[mask == 1]
+        mseT1w.append(metricsT1w.calculate())
+        mseT2w.append(metricsT2w.calculate())
+    # calculate norm od MSE and averaging over T1w and T2w
+    softmax_mse = special.softmax(-np.add(mseT1w, mseT2w))
+
+    # Get the list of GroundTruth and converts the image in numpy format
+    groundtruth_np = [sitk.GetArrayFromImage(atlas.images[structure.BrainImageTypes.GroundTruth]) for atlas in atlases]
+
+    # Stack the images in a 4-D numpy array
+    groundtruth_np = np.stack(groundtruth_np, axis=-1)
+
+    # Compile the atlas by taking the most occurring label for each voxel
+    atlas_np = weighted_mode(groundtruth_np, softmax_mse, axis=3)
+
+    # write prediction and probabilities
+    predictions = np.squeeze(atlas_np[0])
+    probabilities = np.squeeze(atlas_np[1])
+
+    return predictions, probabilities
+
+
+def local_weighted_atlas(target, atlases):
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_gt_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in atlases]
+    images_t1_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T1w]) for img in atlases]
+    images_t2_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.T2w]) for img in atlases]
+    target_t1_np = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T1w])
+    target_t2_np = sitk.GetArrayFromImage(target.images[structure.BrainImageTypes.T2w])
+
+    # Get local or global weights for each image
+    seT1w = [np.square(np.subtract(target_t1_np, image_t1)) for image_t1 in images_t1_np]
+    seT2w = [np.square(np.subtract(target_t2_np, image_t2)) for image_t2 in images_t2_np]
+    weights_np = special.softmax(-np.add(seT1w, seT2w))
+
+    # Get votes for each label, including individual weights
+    atlas_np = weighted_mode(images_gt_np, weights_np)
+    predictions = np.squeeze(atlas_np[0])
+    probabilities = np.squeeze(atlas_np[1])
+
+    return predictions, probabilities
+
+
+def create_sba_atlas(images, isNonRigid):
+    # Get the list of GroundTruth and converts the image in numpy format
+    images_np = [sitk.GetArrayFromImage(img.images[structure.BrainImageTypes.GroundTruth]) for img in images]
+
+    # Init arrays for the single labelled images
+    all_single_label_images = []
+
+    # for each label
+    for i in range(6):
+        single_label_images = []
+
+        # for each atlas
+        for img in images_np:
+            single_label_image = np.zeros(img.shape, dtype=bool)
+            single_label_image[img == i] = True
+            single_label_images.append(single_label_image)
+
+        all_single_label_images.append(single_label_images)
+
+    all_sed = []
+
+    for i in range(6):
+
+        sed = np.zeros(images_np[0].shape)
+
+        for img in all_single_label_images[i]:
+            single_sed = - distance_transform_edt(img) + distance_transform_edt(np.logical_not(img))
+            sed = sed + single_sed
+            print('Label ', i, ', voxel [60, 110, 130] = ', single_sed[60, 110, 130])
+
+        all_sed.append(sed)
+
+    # Stack the SEDs in a 4-D numpy array
+    sed_map_np = np.stack(all_sed, axis=-1)
+
+    atlas = np.argmin(sed_map_np, axis=3)
+
+    # Save atlas
+    if isNonRigid:
+        np.save("../data/atlas/atlas_prediction_SBA_non_rigid.npy", atlas)
+    else:
+        np.save("../data/atlas/atlas_prediction_SBA_affine.npy", atlas)
+    return

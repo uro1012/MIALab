@@ -15,7 +15,7 @@ class FilePathGenerator(metaclass=abc.ABCMeta):
 
     @staticmethod
     @abc.abstractmethod
-    def get_full_file_path(id_: str, root_dir: str, file_key, file_extension: str) -> str:
+    def get_full_file_path(id_: str, root_dir: str, file_key, file_extension: str, pre_processed, is_non_rigid) -> str:
         """Gets the full file path for a data file.
 
                 Args:
@@ -42,7 +42,7 @@ class BrainImageFilePathGenerator(FilePathGenerator):
         pass
 
     @staticmethod
-    def get_full_file_path(id_: str, root_dir: str, file_key, file_extension: str) -> str:
+    def get_full_file_path(id_: str, root_dir: str, file_key, file_extension: str, pre_processed, is_non_rigid) -> str:
         """Gets the full file path for an image.
 
         Args:
@@ -56,17 +56,27 @@ class BrainImageFilePathGenerator(FilePathGenerator):
         """
 
         # the commented file_names are for the registration group
+        if not pre_processed:
+            fileaddition = 'native'
+        elif is_non_rigid:
+            fileaddition = 'NRReg'
+        else:
+            fileaddition = 'affReg'
 
         if file_key == structure.BrainImageTypes.T1w:
-            file_name = 'T1native'
+            file_name = 'T1' + fileaddition
         elif file_key == structure.BrainImageTypes.T2w:
-            file_name = 'T2native'
+            file_name = 'T2' + fileaddition
         elif file_key == structure.BrainImageTypes.GroundTruth:
-            file_name = 'labels_native'
+            file_name = 'labels_' + fileaddition
         elif file_key == structure.BrainImageTypes.BrainMask:
-            file_name = 'Brainmasknative'
+            file_name = 'Brainmask' + fileaddition
         elif file_key == structure.BrainImageTypes.RegistrationTransform:
-            return os.path.join(root_dir, 'affine.txt')
+            file_name = 'affine'
+            file_extension = '.txt'
+        elif file_key == structure.BrainImageTypes.RegistrationParameterMap:
+            file_name = 'parameterMap'
+            file_extension = ''
         else:
             raise ValueError('Unknown key')
 
@@ -178,7 +188,9 @@ class FileSystemDataCrawler:
                  file_keys: list,
                  file_path_generator: FilePathGenerator,
                  dir_filter: DirectoryFilter = None,
-                 file_extension: str = '.nii.gz'):
+                 file_extension: str = '.nii.gz',
+                 pre_processed = False,
+                 is_non_rigid = False):
         """Initializes a new instance of the FileSystemDataCrawler class.
 
         Args:
@@ -202,15 +214,15 @@ class FileSystemDataCrawler:
         self.data = {}  # dict with key=id (i.e, directory name), value=dict with key=file_keys and value=path to file
 
         data_dir = self._crawl_directories()
-        self._crawl_data(data_dir)
+        self._crawl_data(data_dir, pre_processed, is_non_rigid)
 
-    def _crawl_data(self, data_dir: dict):
+    def _crawl_data(self, data_dir: dict, pre_processed, is_non_rigid):
         """Crawls the data inside a directory."""
 
         for id_, path in data_dir.items():
             data_dict = {id_: path}  # init dict with id_ pointing to path
             for item in self.file_keys:
-                file_path = self.file_path_generator.get_full_file_path(id_, path, item, self.file_extension)
+                file_path = self.file_path_generator.get_full_file_path(id_, path, item, self.file_extension, pre_processed, is_non_rigid)
                 data_dict[item] = file_path
 
             self.data[id_] = data_dict

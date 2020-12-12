@@ -4,59 +4,100 @@ import typing as t
 import warnings
 
 import numpy as np
-from scipy import stats
-from scipy import special
-from sklearn.utils.extmath import weighted_mode
-from scipy.ndimage.morphology import distance_transform_edt
-import pymia.data.conversion as conversion
-import pymia.filtering.filter as fltr
-import pymia.evaluation.evaluator as eval_
-import pymia.evaluation.metric as metric
 import SimpleITK as sitk
 from matplotlib import pyplot as plt
 
-def display_slice(images, slice, single_plot=1):
-    fig = plt.figure(figsize=(8, 8))
 
-    n_row_plot = 5
-    n_col_plot = 2
+def load_image(img_file, img_path='root', img_type='np'):
+    if img_path == 'root':
+        img_path = ''
 
-    if single_plot:
-        image_3d_np = sitk.GetArrayFromImage(images)
-        image_2d_np = image_3d_np[slice, :, :]
+    if img_type == 'np':
+        img = np.load(os.path.join(img_path, img_file))
+    elif img_type == 'sitk':
+        img_sitk = sitk.ReadImage(os.path.join(img_path, img_file))
+        img = sitk.GetArrayFromImage(img_sitk)
 
-        plt.imshow(image_2d_np, interpolation='nearest')
+    return img
+
+
+def display_slice(images, slice, single_plot='False', n_row_plot=1, n_col_plot=1, plane='axial'):
+    fig, axs = plt.subplots(n_row_plot, n_col_plot)
+
+    for i in range(len(images)):
+        if plane=='axial':
+            image_2d = images[i][slice, :, :]
+
+        elif plane=='coronal':
+            image_2d = images[i][:, slice, :]
+
+        elif plane=='sagital':
+            image_2d = images[i][:, :, slice]
+
+        x_index = i % n_col_plot
+        y_index = int(np.floor(i/n_col_plot))
+
+        if n_row_plot > 1 and n_col_plot > 1:
+            axs[x_index, y_index].imshow(image_2d, interpolation='nearest')
+            axs[x_index, y_index].axis('equal')
+            axs[x_index, y_index].axis("off")
+
+        elif n_row_plot == 1:
+            axs[x_index].imshow(image_2d, interpolation='nearest')
+            axs[x_index].axis('equal')
+            axs[x_index].axis("off")
+
+        elif n_col_plot == 1:
+            axs[y_index].imshow(image_2d, interpolation='nearest')
+            axs[y_index].axis('equal')
+            axs[x_index].axis("off")
+
         plt.draw()
-    else:
-        for i in range(1, len(images)+1):
-            fig.add_subplot(n_row_plot, n_col_plot, i)
-            image_3d_np = sitk.GetArrayFromImage(images[i-1])
-            image_2d_np = image_3d_np[slice, :, :]
 
-            plt.imshow(image_2d_np, interpolation='nearest')
-            plt.draw()
     plt.show()
 
+    return fig, axs
+
+
 def display_3planes(image, intersect_point):
+    x_max, y_max, z_max = image.shape
+
     axial_img = image[intersect_point[0], :, :]
     coronal_img = image[:, intersect_point[1], :]
     sagital_img = image[:, :, intersect_point[2]]
 
-    fig, axs = plt.subplots(2, 2, constrained_layout=True)
-    axs[0].plot(axial_img, interpolation='nearest')
-    axs[0].set_title('axial plane')
-    axs[1].imshow(coronal_img, interpolation='nearest')
-    axs[1].set_title('coronal plane')
-    axs[2].imshow(sagital_img, interpolation='nearest')
-    axs[2].set_title('sagital plane')
+    fig, axs = plt.subplots(2, 2)
+
+    axs[0, 0].imshow(axial_img, interpolation='nearest')
+    axs[0, 0].axis('equal')
+    axs[0, 0].set_title('Axial plane', fontsize=10)
+    axs[0, 0].axis("off")
+
+    axs[0, 1].imshow(coronal_img, interpolation='nearest')
+    axs[0, 1].axis('equal')
+    axs[0, 1].set_title('Coronal plane', fontsize=10)
+    axs[0, 1].axis("off")
+
+    axs[1, 0].imshow(sagital_img, interpolation='nearest')
+    axs[1, 0].axis('equal')
+    axs[1, 0].set_title('Sagital plane', fontsize=10)
+    axs[1, 0].axis("off")
 
     plt.draw()
     plt.show()
 
+    return fig, axs
+
 
 def main():
-    img = np.load('../data/atlas/atlas_prediction_SBA_affine.npy')
-    display_3planes(img, [100, 120, 50])
+    # Display 3 plane image
+    img_sba_affine = load_image('../data/atlas/atlas_prediction_SBA_affine.npy')
+    display_3planes(img_sba_affine, [100, 120, 50])
+
+    # Display the same slice of two different images
+    img_mj_affine = load_image('../data/atlas/mni_icbm152_t1_tal_nlin_sym_09a.nii.gz', img_type='sitk')
+    img_list = [img_mj_affine, img_sba_affine]
+    display_slice(img_list, 100, n_row_plot=1, n_col_plot=2)
 
 
 if __name__ == '__main__':

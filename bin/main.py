@@ -48,7 +48,6 @@ def main(result_dir: str, data_atlas_dir: str, data_train_dir: str, data_test_di
 
     np.random.seed(42)  # set fixed seed
 
-
     # load atlas images
     putil.load_atlas_images(data_atlas_dir)
 

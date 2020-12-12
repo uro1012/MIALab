@@ -1,7 +1,8 @@
 import enum
 import os
 import typing as t
-import warnings
+import tkinter as tk
+from tkinter import filedialog
 
 import numpy as np
 import SimpleITK as sitk
@@ -63,8 +64,8 @@ def display_3planes(image, intersect_point):
     x_max, y_max, z_max = image.shape
 
     axial_img = image[intersect_point[0], :, :]
-    coronal_img = image[:, intersect_point[1], :]
-    sagital_img = image[:, :, intersect_point[2]]
+    coronal_img = image[::-1, intersect_point[1], :]
+    sagital_img = image[::-1, :, intersect_point[2]]
 
     fig, axs = plt.subplots(2, 2)
 
@@ -91,13 +92,16 @@ def display_3planes(image, intersect_point):
 
 def main():
     # Display 3 plane image
-    img_sba_affine = load_image('../data/atlas/atlas_prediction_SBA_affine.npy')
-    display_3planes(img_sba_affine, [100, 120, 50])
+    filepath = filedialog.askopenfilename()
+    img = load_image(filepath)
+    display_3planes(img, [100, 120, 50])
 
     # Display the same slice of two different images
-    img_mj_affine = load_image('../data/atlas/mni_icbm152_t1_tal_nlin_sym_09a.nii.gz', img_type='sitk')
-    img_list = [img_mj_affine, img_sba_affine]
-    display_slice(img_list, 100, n_row_plot=1, n_col_plot=2)
+    files = filedialog.askopenfilename(multiple=True)
+    imgs = []
+    for file in files:
+        imgs.append(load_image(file, img_type='sitk'))
+    display_slice(imgs, 100, n_row_plot=1, n_col_plot=2)
 
 
 if __name__ == '__main__':

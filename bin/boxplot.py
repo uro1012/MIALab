@@ -2,14 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# set list of repos manually
-repo = ["AB_Non_Rigid_MV", "AB_Non_Rigid_GW", "AB_Non_Rigid_LW", "AB_Non_Rigid_SBA", "ML_Non_Rigid"]
-
-# set x labels
-x_labels = ["MV", "GW", "LW", "SBA", "ML"]
-
-
-def main():
+def boxplot(repos, x_labels, title="", filename="boxplot", show=False):
     # todo: load the "results.csv" file from the mia-results directory
     # todo: read the data into a list
     # todo: plot the Dice coefficients per label (i.e. white matter, gray matter, hippocampus, amygdala, thalamus) in a boxplot
@@ -19,15 +12,16 @@ def main():
 
     labels = ['Amygdala', 'GreyMatter', 'Hippocampus', 'Thalamus', 'WhiteMatter']
 
-    dice = [[0] * len(labels) for i in range(len(repo))]
-    hdrfdst = [[0] * len(labels) for i in range(len(repo))]
+    dice = [[0] * len(labels) for i in range(len(repos))]
+    hdrfdst = [[0] * len(labels) for i in range(len(repos))]
 
     fig, axs = plt.subplots(2, 5, figsize=(16, 10))
+    fig.suptitle(title, fontsize=30)
     axs[0, 0].set_ylabel('Dice', fontsize=20)
     axs[1, 0].set_ylabel('Hausdorff', fontsize=20)
 
-    for n in range(len(repo)):
-        path = "mia-result/" + repo[n] + "/results.csv"
+    for n in range(len(repos)):
+        path = "mia-result/" + repos[n] + "/results.csv"
         results = pd.read_csv(path, sep=';')
 
         for i in range(len(labels)):
@@ -44,8 +38,23 @@ def main():
         axs[1, i].set_ylim(0, np.max(hdrfdst))
         axs[1, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
 
-    plt.savefig("mia-result/boxplot.png")
-    plt.show()
+    plt.savefig("mia-result/" + filename + ".png")
+    if show:
+        plt.show()
+
+
+def main():
+    reposNR = ["AB_Affine_MV", "AB_Affine_GW", "AB_Affine_LW", "AB_Affine_SBA", "ML_Affine"]
+    x_labelsNR = ["MV", "GW", "LW", "SBA", "ML"]
+    boxplot(reposNR, x_labelsNR, "Comparaison of affine segmentations", "boxplot_Affine_all")
+
+    reposAffine = ["AB_Non_Rigid_MV", "AB_Non_Rigid_GW", "AB_Non_Rigid_LW", "AB_Non_Rigid_SBA", "ML_Non_Rigid"]
+    x_labelsAffine = ["MV", "GW", "LW", "SBA", "ML"]
+    boxplot(reposAffine, x_labelsAffine, "Comparaison of non-rigid segmentations", "boxplot_NR_all")
+
+    reposComp = ["AB_Non_Rigid_MV", "AB_Affine_MV", "ML_Non_Rigid", "ML_Affine"]
+    x_labelsComp = ["MV NR", "MV Aff", "ML NR", "ML Aff"]
+    boxplot(reposComp, x_labelsComp, "Comparaison between non-rigid and affine registration", "boxplotComparisonNRAff")
 
 
 if __name__ == '__main__':

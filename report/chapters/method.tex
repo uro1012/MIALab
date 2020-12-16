@@ -1,7 +1,7 @@
 \section*{Method}
 
 \subsection*{MIA pipeline}
-The medical image pipeline consists of 5 distinct steps: registration, pre-processing, feature extraction, classification and post-processing. It is illustrated in the figure \ref{fig:pipeline}.
+The medical image pipeline consists of 5 distinct steps: registration, pre-processing, feature extraction, classification and post-processing. It is illustrated in the Fig. \ref{fig:pipeline}.
 
 \begin{figure}[h!]
 	\centering
@@ -18,11 +18,23 @@ To measure the overall performance, several evaluation metrics can be used. The 
 For the registration step, two different solutions have been compared. The first is affine transformation, which which allows translation, rotation and scaling. The second one is non-rigid, which transforms the volumes locally. This can lead to a better matching between the input image and the atlas. For the affine registration of two volumes, the volume to be registered is moved relative to the fixed volume by rotation, translation or scaling. After each displacement a similarity of the volumes is measured. This parameter is minimized by moving the volume further until a minimum is reached. The same is true for a non rigid registration, but there is an additional tuning factor which allows local displacements, rotations and scaling. We used the \textit{Simple Elastix}\footnote{\url{https://github.com/SuperElastix/SimpleElastix}} library to compute the non-rigid transformation. This library uses a B-spline registration to register the two volumes non rigidly.
 
 \subsection*{Segmentation}
-For the segmentation step, several types have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. The other methods were all atlas-based, where the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights. In order to make the segmentation smoother, an additional method called Shape based averaging was implemented.
+For the segmentation step, several types have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. These parameters were found by an simple optimization step. For this, first one parameter was kept constant while the other was optimized and then vice versa. The other methods were all atlas-based, where the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights. In order to make the segmentation smoother, an additional method called Shape based averaging was implemented.
 
 \subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
 \subsubsection*{Global Weighted Voting}
+Global weighted voting is an atlas-based segmentation method that takes into account individual variations of the target being segmented with the available atlases. Voting of atlases with high similarity to the target being segmented are weighted higher. In our case, the T1w and T2w volumes of 20 atlases were compared with the T1w and T2w volumes of the target. By measuring the mean square diffrences (MSD) averaged over both T1w and T2w volumes, each atlas was given a corresponding weight.  The weights were distributed by a soft maximization function so that the sum of all weights would equal one. This simplifies the calculation of the probability of the prediction. To get the segmentation, a majority voting is now performed with the calculated weights.
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.5\linewidth]{img/globalWeightedProblematic}
+	\caption{Example for showing the problem of global weighted voting. \color{red} Add reference Combination strategies in multi-atlas image segmentation: Application to brain MR data}
+	\label{fig:globalweightedproblematic}
+\end{figure}
+
+The problem of this method is that an atlas is very similar in most parts but local is very different compared to the target. The weighting is still high due to the overall similarity. The opposite can also be the case, so that the overall similarity is very low but the atlas still has a very high correlation with the target in local parts. Thus, this similarity is not accounted for by the global weighting. To give this local similarities weighting, a local weighted voting can be performed. This problem is well illustrated in Fig. \ref{fig:globalweightedproblematic}.
+
+
 
 \subsubsection*{Local Weighted Voting}
 \subsubsection*{Shape Based Averaging}

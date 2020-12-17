@@ -22,6 +22,14 @@ For the segmentation step, several types have been compared. The first one is ma
 
 \subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.8\linewidth]{img/majorityVoting}
+	\caption{Schematic representation of majority voting}
+	\label{fig:majorityVoting}
+\end{figure}
+
 \subsubsection*{Global Weighted Voting}
 Global weighted voting is an atlas-based segmentation method that takes into account individual variations of the target being segmented with the available atlases. Voting of atlases with high similarity to the target being segmented are weighted higher. In our case, the T1w and T2w volumes of 20 atlases were compared with the T1w and T2w volumes of the target. By measuring the mean square diffrences (MSD) averaged over both T1w and T2w volumes, each atlas was given a corresponding weight.  The weights were distributed by a soft maximization function so that the sum of all weights would equal one. This simplifies the calculation of the probability of the prediction. To get the segmentation, a majority voting is now performed with the calculated weights.
 
@@ -34,7 +42,20 @@ Global weighted voting is an atlas-based segmentation method that takes into acc
 
 The problem of this method is that an atlas is very similar in most parts but local is very different compared to the target. The weighting is still high due to the overall similarity. The opposite can also be the case, so that the overall similarity is very low but the atlas still has a very high correlation with the target in local parts. Thus, this similarity is not accounted for by the global weighting. To give this local similarities weighting, a local weighted voting can be performed. This problem is well illustrated in Fig. \ref{fig:globalweightedproblematic}.
 
-
-
 \subsubsection*{Local Weighted Voting}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.8\linewidth]{img/localWeightedVoting}
+	\caption{Schematic representation of local weighted voting}
+	\label{fig:localWeightedVoting}
+\end{figure}
+
 \subsubsection*{Shape Based Averaging}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.8\linewidth]{img/distMap}
+	\caption{Schematic representation of the distance map used for shape based averaging}
+	\label{fig:distMap}
+\end{figure}

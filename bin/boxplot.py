@@ -49,15 +49,15 @@ def boxplot(repos, x_labels, title="", filename="boxplot", show=False):
 def main():
     reposNR = ["AB_Affine_MV", "AB_Affine_GW", "AB_Affine_LW", "AB_Affine_SBA", "ML_Affine"]
     x_labelsNR = ["MV", "GW", "LW", "SBA", "ML"]
-    boxplot(reposNR, x_labelsNR, "Comparaison of affine segmentations", "boxplot_Affine_all")
+    boxplot(reposNR, x_labelsNR, "Comparison of segmentation methods with affine registration", "boxplot_Affine_all")
 
     reposAffine = ["AB_Non_Rigid_MV", "AB_Non_Rigid_GW", "AB_Non_Rigid_LW", "AB_Non_Rigid_SBA", "ML_Non_Rigid"]
     x_labelsAffine = ["MV", "GW", "LW", "SBA", "ML"]
-    boxplot(reposAffine, x_labelsAffine, "Comparaison of non-rigid segmentations", "boxplot_NR_all")
+    boxplot(reposAffine, x_labelsAffine, "Comparison of segmentation methods with non-rigid registration", "boxplot_NR_all")
 
     reposComp = ["AB_Non_Rigid_MV", "AB_Affine_MV", "ML_Non_Rigid", "ML_Affine"]
     x_labelsComp = ["MV NR", "MV Aff", "ML NR", "ML Aff"]
-    boxplot(reposComp, x_labelsComp, "Comparaison between non-rigid and affine registration", "boxplotComparisonNRAff")
+    boxplot(reposComp, x_labelsComp, "Comparison between non-rigid and affine registration", "boxplotComparisonNRAff")
 
 
 if __name__ == '__main__':

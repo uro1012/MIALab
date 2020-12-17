@@ -17,8 +17,9 @@ def boxplot(repos, x_labels, title="", filename="boxplot", show=False):
 
     fig, axs = plt.subplots(2, 5, figsize=(16, 10))
     fig.suptitle(title, fontsize=30)
-    axs[0, 0].set_ylabel('Dice', fontsize=20)
-    axs[1, 0].set_ylabel('Hausdorff', fontsize=20)
+    fig.subplots_adjust(hspace=0.25, wspace=0.25)
+    axs[0, 0].set_ylabel('Dice', fontsize=24)
+    axs[1, 0].set_ylabel('Hausdorff', fontsize=24)
 
     for n in range(len(repos)):
         path = "mia-result/" + repos[n] + "/results.csv"
@@ -31,12 +32,14 @@ def boxplot(repos, x_labels, title="", filename="boxplot", show=False):
     for i in range(len(labels)):
         axs[0, i].boxplot([d[i] for d in dice])
         axs[0, i].set_ylim(0, 1)
-        axs[0, i].set_title(labels[i], fontsize=16)
-        axs[0, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
+        axs[0, i].set_title(labels[i], fontsize=24)
+        axs[0, i].set_xticklabels(x_labels, rotation=45, fontsize=16)
+        axs[0, i].tick_params(labelsize=16)
 
         axs[1, i].boxplot([d[i] for d in hdrfdst])
         axs[1, i].set_ylim(0, np.max(hdrfdst))
-        axs[1, i].set_xticklabels(x_labels, rotation=45, fontsize=10)
+        axs[1, i].set_xticklabels(x_labels, rotation=45, fontsize=16)
+        axs[1, i].tick_params(labelsize=16)
 
     plt.savefig("mia-result/" + filename + ".png")
     if show:

@@ -1,7 +1,6 @@
 \section*{Introduction}
+Medical images are widely used for all kinds of diagnoses such as tumour detection and tissue segmentation. Those are tedious and repetitive tasks for the medical personnel. A medical image analysis (MIA) pipeline is a tool that can reduce the time needed to perform said tasks. The current trend of machine learning offers new possibilities for this tool, especially in the classification step.
 
-\subsection*{Medical problem}
-
-\subsection*{Technical problem}
+In this project, four variations of atlas-based segmentation and a simple machine learning algorithm are compared. Those are majority voting, global and local weighted voting, shape based averaging, and random forest for the machine learning segmentation. The comparison is done with a Dice score and a Hausdorff distance, two widely used measurement tools. For simplicity, only five brain tissues have been segmented: grey and white matter, the amygdala, hippocampus, and thalamus. A total of 30 anonymized images have been used, 20 for training and 10 for testing. As it has quite some influence for segmentation, two kinds of registration have also been compared: affine and non-rigid.
 
 \subsection*{Related work}

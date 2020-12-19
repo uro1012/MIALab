@@ -17,11 +17,21 @@ To measure the overall performance, several evaluation metrics can be used. The 
 \subsection*{Registration}
 For the registration step, two different solutions have been compared. The first is affine transformation, which which allows translation, rotation and scaling. The second one is non-rigid, which transforms the volumes locally. This can lead to a better matching between the input image and the atlas. For the affine registration of two volumes, the volume to be registered is moved relative to the fixed volume by rotation, translation or scaling. After each displacement a similarity of the volumes is measured. This parameter is minimized by moving the volume further until a minimum is reached. The same is true for a non rigid registration, but there is an additional tuning factor which allows local displacements, rotations and scaling. We used the \textit{Simple Elastix}\footnote{\url{https://github.com/SuperElastix/SimpleElastix}} library to compute the non-rigid transformation. This library uses a B-spline registration to register the two volumes non rigidly.
 
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\linewidth]{img/compareRegistration}
+	\caption{Comparison between affine and non-rigid registration by similarity measurement of squared differences of the registered volume to the fixed volume, high values mean larger differences.}
+	\label{fig:compareregistration}
+\end{figure}
+
+As can be seen in Fig. \ref{fig:compareregistration}. non-rigid registration in the gray matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
+
 \subsection*{Segmentation}
 For the segmentation step, a total of five methods have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. These parameters were found step by step with a manual optimization. For this, first one parameter was kept constant while the other was optimized and then vice versa. The other four methods were atlas-based, where mainly the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights. In order to make the segmentation smoother, an additional method called Shape based averaging was implemented.
 
 \subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
+Majority voting is the simplest method for multi-atals based segmentation. The volumes of all atlases are registered to the registration atlas. The target being segmented is also registered to this atlas. Next, for each pixel of the target, the same pixel of each atlas is used to vote which label should apply. The label with the most votes wins and is segmented accordingly. In Fig. \ref{fig:majorityVoting}. this method is illustrated with 3 atlases, for our method we used 20 atlases. This method will obviously struggle with variable brain parts. Since very different atlases compared to the target will have the same weights as very similar atlases. This problem can be reduced with a weighting of the atlases.
 
 \begin{figure}[h!]
 	\centering
@@ -31,7 +41,7 @@ For the segmentation step, a total of five methods have been compared. The first
 \end{figure}
 
 \subsubsection*{Global Weighted Voting}
-Global weighted voting is an atlas-based segmentation method that takes into account individual variations of the target being segmented with the available atlases. Voting of atlases with high similarity to the target being segmented are weighted higher. In our case, the T1w and T2w volumes of 20 atlases were compared with the T1w and T2w volumes of the target. By measuring the mean square differences (MSD) averaged over both T1w and T2w volumes, each atlas was given a corresponding weight.  The weights were distributed by a soft maximization function so that the sum of all weights would equal one. This simplifies the calculation of the probability of the prediction. To get the segmentation, a majority voting is performed with the globally calculated weights.
+Global weighted voting is an atlas-based segmentation method that takes into account individual variations of the target being segmented with the available atlases. Voting of atlases with high similarity to the target being segmented are weighted higher. In our case, the T1w and T2w volumes of 20 atlases were compared with the T1w and T2w volumes of the target after a registration to an atlas volume. By measuring the mean square differences (MSD) averaged over both T1w and T2w volumes, each atlas was given a corresponding weight.  The weights were distributed by a soft maximization function so that the sum of all weights would equal one. This simplifies the calculation of the probability of the prediction. To get the segmentation, a majority voting is performed with the globally calculated weights.
 
 \begin{figure}[h!]
 	\centering

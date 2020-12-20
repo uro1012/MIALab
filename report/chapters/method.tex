@@ -1,7 +1,7 @@
 \section*{Method}
 
 \subsection*{MIA pipeline} \label{sec:MIApipeline}
-The medical image analysis pipeline consists of five distinct steps: registration, pre-processing, feature extraction, classification and post-processing. It is illustrated in the Fig. \ref{fig:pipeline}.
+The medical image analysis pipeline consists of five distinct steps: registration, pre-processing, feature extraction, classification and post-processing. It is illustrated in the fig. \ref{fig:pipeline}.
 
 \begin{figure}[h!]
 	\centering
@@ -17,21 +17,12 @@ To measure the overall performance, several evaluation metrics can be used. The 
 \subsection*{Registration}
 For the registration step, two different solutions have been compared. The first is affine transformation, which which allows translation, rotation and scaling. The second one is non-rigid, which transforms the volumes locally. This can lead to a better matching between the input image and the atlas. For the affine registration of two volumes, the volume to be registered is moved relative to the fixed volume by rotation, translation or scaling. After each displacement a similarity of the volumes is measured. This parameter is minimized by moving the volume further until a minimum is reached. The same is true for a non rigid registration, but there is an additional tuning factor which allows local displacements, rotations and scaling. We used the \textit{Simple Elastix}\footnote{\url{https://github.com/SuperElastix/SimpleElastix}} library to compute the non-rigid transformation. This library uses a B-spline registration to register the two volumes non rigidly.
 
-\begin{figure}[h!]
-	\centering
-	\includegraphics[width=\linewidth]{img/compareRegistration}
-	\caption{Comparison between affine and non-rigid registration by similarity measurement of squared differences of the registered volume to the fixed volume, high values mean larger differences.}
-	\label{fig:compareregistration}
-\end{figure}
-
-As can be seen in Fig. \ref{fig:compareregistration}. non-rigid registration in the gray matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
-
 \subsection*{Segmentation}
 For the segmentation step, a total of five methods have been compared. The first one is machine learning based, essentially a random forest with 10 estimators of maximum depth of 40. These parameters were found step by step with a manual optimization. For this, first one parameter was kept constant while the other was optimized and then vice versa. The other four methods were atlas-based, where mainly the weight function has been modified. The simplest one is when all images have the same weight. To reduce potentially worse ground truth inputs, we used global and local weights. In order to make the segmentation smoother, an additional method called Shape based averaging was implemented.
 
 \subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
-Majority voting is the simplest method for multi-atals based segmentation. The volumes of all atlases are registered to the registration atlas. The target being segmented is also registered to this atlas. Next, for each pixel of the target, the same pixel of each atlas is used to vote which label should apply. The label with the most votes wins and is segmented accordingly. In Fig. \ref{fig:majorityVoting}. this method is illustrated with 3 atlases, for our method we used 20 atlases. This method will obviously struggle with variable brain parts. Since very different atlases compared to the target will have the same weights as very similar atlases. This problem can be reduced with a weighting of the atlases.
+Majority voting is the simplest method for multi-atals based segmentation. The volumes of all atlases are registered to the registration atlas. The target being segmented is also registered to this atlas. Next, for each voxel of the target, the same voxel of each atlas is used to vote which label should apply. The label with the most votes wins and is segmented accordingly. In fig. \ref{fig:majorityVoting}. this method is illustrated with 3 atlases, for our method we used 20 atlases. This method will obviously struggle with variable brain parts. Since very different atlases compared to the target will have the same weights as very similar atlases. This problem can be reduced with a weighting of the atlases.
 
 \begin{figure}[h!]
 	\centering
@@ -46,13 +37,14 @@ Global weighted voting is an atlas-based segmentation method that takes into acc
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=0.5\linewidth]{img/globalWeightedProblematic}
-	\caption{Example for showing the problem of global weighted voting. \color{red} Add reference Combination strategies in multi-atlas image segmentation: Application to brain MR data}
+	\caption{Example for showing the problem of global weighted voting\cite{b2}.}
 	\label{fig:globalweightedproblematic}
 \end{figure}
 
-The problem of this method is that an atlas is very similar in most parts but local is very different compared to the target. The weighting is still high due to the overall similarity. The opposite can also be the case, so that the overall similarity is very low but the atlas still has a very high correlation with the target in local parts. Thus, this similarity is not accounted for by the global weighting. To give this local similarities weighting, a local weighted voting can be performed. This problem is well illustrated in Fig. \ref{fig:globalweightedproblematic}.
+The problem of this method is that an atlas is very similar in most parts but local is very different compared to the target. The weighting is still high due to the overall similarity. The opposite can also be the case, so that the overall similarity is very low but the atlas still has a very high correlation with the target in local parts. Thus, this similarity is not accounted for by the global weighting. To give this local similarities weighting, a local weighted voting can be performed. This problem is well illustrated in fig. \ref{fig:globalweightedproblematic}.
 
 \subsubsection*{Local Weighted Voting}
+The segmentation method local weighted voting takes into account local similarities of atlases with the target being segmented. Thereby, like in global weighted voting, the T1w and T2w volumes of the target and the atlases are registered to a registration atlas. Now each voxel of the atlases gets its own weighting based on the local similarity with the target. The similarities can be obtained by calculating the cross correlation, squared differences or mutual information. (see fig. \ref{fig:localWeightedVoting} for better overview) Of course, there are other similarity measures, but they have not been considered. Because the squared difference measurements give the best results for segmentation, this method was chosen\cite{b2}. Another factor is the size of the kernel which is compared locally with the target. This is not quite trivial, if the kernel is too large, a similar problem arises as with global weighted voting (see fig. \ref{fig:globalweightedproblematic}).  If the kernel is too small, structures can be compared less effectively.
 
 \begin{figure}[h!]
 	\centering

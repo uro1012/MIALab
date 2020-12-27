@@ -1,4 +1,7 @@
 \section*{Method}
+In order to compare the performance of an altas-based segmentation versus a machine learning approach, both methods have been applied to the same set of image. As stated in [ref], the registration quality have a large impact on an atlas-based segmentation performance. Thus a non-rigid registration have been implemented 
+The provided pipeline was intended for a machine learning segmentation approach. The data are composed of an atlas (N = 1), a training subset (N = 20) and a testing subset (N = 10). For the atlas-based segmentation implementation, the training data from the provided pipeline have been used to generate different atlas according to the methods described below. Since the training data are used to be compiled multiatlas fusion, it will be refer to the atlas as the result of the fusion from the training images. This work includes the comparison of four different multi-atlas segmentation methods versus the provided machine learning approach described in the previous chapter.
+
 
 \subsection*{MIA pipeline} \label{sec:MIApipeline}
 The medical image analysis pipeline consists of five distinct steps: registration, pre-processing, feature extraction, classification and post-processing. It is illustrated in the fig. \ref{fig:pipeline}.
@@ -22,11 +25,14 @@ For the segmentation step, a total of five methods have been compared. The first
 
 \subsubsection*{Machine Learning}
 \subsubsection*{Majority Voting}
-Majority voting is the simplest method for multi-atals based segmentation. The volumes of all atlases are registered to the registration atlas. The target being segmented is also registered to this atlas. Next, for each voxel of the target, the same voxel of each atlas is used to vote which label should apply. The label with the most votes wins and is segmented accordingly. In fig. \ref{fig:majorityVoting}. this method is illustrated with 3 atlases, for our method we used 20 atlases. This method will obviously struggle with variable brain parts. Since very different atlases compared to the target will have the same weights as very similar atlases. This problem can be reduced with a weighting of the atlases.
+Majority voting is the simplest method for multi-atlas based segmentation. The volumes of all atlas are registered to the registration atlas. The target being segmented is also registered to this atlas. Next, for each voxel of the target, the same voxel of each atlas is used to vote which label should apply. The label with the most votes wins and is segmented accordingly. In fig. \ref{fig:majorityVoting}. this method is illustrated with 3 atlases, for our method we used 20 atlases. This method will obviously struggle with variable brain parts. Since very different atlases compared to the target will have the same weights as very similar atlases. This problem can be reduced with a weighting of the atlas.
+This is the most straight forward method to perform a multi-atlas fusion. Since the atlas images are registered (indirectly) to the "target" image, each voxel $v$ correspond to the same voxel in all other images. The intuitive way to understand this method is that each voxel's label is assign according to maximum number of atlas vote for this label. Explicitly, for $l(v^{i})$ being the label of a given voxel $v^{i}$ this can be expressed as $L={l_1, ... , l_D}$:
+\[ Y^{i}=max[\sum{}] \]
+
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[width=0.8\linewidth]{img/majorityVoting}
+	\includegraphics[width=0.8\linewidth]{img/majorityVoting2}
 	\caption{Schematic representation of majority voting.}
 	\label{fig:majorityVoting}
 \end{figure}
@@ -53,11 +59,13 @@ The segmentation method local weighted voting takes into account local similarit
 	\label{fig:localWeightedVoting}
 \end{figure}
 
-\subsubsection*{Shape Based Averaging}
+\subsubsection*{Shape-based Averaging}
+Shape-based averaging is a method introduced by (source). This algorithm aims to reduce the number of unconnected region in the segmentation. Unlike the previous algorithm, this fusion method is not based on votes. The signed Euclidian distance map of each individual labels is summed up for each atlas. For each voxel, the label minimizing this sum is attributed. Formally, for $D_i$ being the signed Euclidian distance of a specific voxel $v$ for a label $l$ in the atlas $i$.
+\[ l(v) = \argmin_l\sum_{i=1}^{N} D_i(v, l) \]
 
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=0.8\linewidth]{img/distMap}
-	\caption{Schematic representation of the distance map used for shape based averaging.}
+	\caption{Illustration of the computation steps of the signed Euclidian distance map from a simple binary image (Adapted from: REFERENCE)}
 	\label{fig:distMap}
 \end{figure}

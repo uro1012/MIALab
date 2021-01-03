@@ -16,7 +16,7 @@ With a fixed number of depths, except for the amygdala, thalamus and hippocampus
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=\linewidth]{img/plotMLOptEstimator2}
-	\caption{Random forest  mean Hausdorff distance and dice coefficient for a constant depth of 40 and estimators between 2 and 20.}
+	\caption{Random forest mean Hausdorff distance and dice coefficient for a constant depth of 40 and estimators between 2 and 20.}
 	\label{fig:MLOptEst}
 \end{figure}
 
@@ -30,7 +30,7 @@ Two registration methods have been implemented: affine (Aff) and non-rigid (NR).
 	\label{fig:compareregistration}
 \end{figure}
 
-As can be seen in figure \ref{fig:compareregistration} non-rigid registration in the gray matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
+As can be seen in figure \ref{fig:compareregistration} non-rigid registration in the grey matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
 To compare the effect of the different registration methods, the pipeline was run for both methods with the segmentation methods majority voting (MV) and machine learning (ML). The results of this comparison are represented in figure \ref{fig:boxplotReg}.
 
 \begin{figure}[h!]
@@ -52,7 +52,7 @@ Five segmentation methods have been implemented: majority voting (MV), global we
 	\label{fig:boxplotAff}
 \end{figure}
 
-For the smaller parts of the brain (Amygdala, Hippocampus and Thalamus), all atlas-based segmentation methods have similar results. Machine learning has more difficulties with those brain parts. On the other hand, it gives better results with grey and white matter. Local weighted atlas significantly performs better than any other atlas-based segmentation methods for those brain parts. It is the best overall segmentation methods.
+For the smaller parts of the brain (amygdala, hippocampus, and thalamus), all atlas-based segmentation methods have similar results. Machine learning has more difficulties with those brain parts. On the other hand, it gives better results with grey and white matter. Local weighted atlas significantly performs better than any other atlas-based segmentation methods for those brain parts. It is the best overall segmentation methods.
 
 The same segmentation methods with non-rigid registration are represented in figure \ref{fig:boxplotNR}.
 

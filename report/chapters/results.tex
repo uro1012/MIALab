@@ -30,7 +30,7 @@ Two registration methods have been implemented: affine (Aff) and non-rigid (NR).
 	\label{fig:compareregistration}
 \end{figure}
 
-As can be seen in figure \ref{fig:compareregistration2}. non-rigid registration in the gray matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
+As can be seen in figure \ref{fig:compareregistration} non-rigid registration in the gray matter region is better than affine registration because it can compensate for local changes. What is additionally important is that the non-rigid registration must be reversed after segmentation. Since it does not correspond to the truth.
 To compare the effect of the different registration methods, the pipeline was run for both methods with the segmentation methods majority voting (MV) and machine learning (ML). The results of this comparison are represented in figure \ref{fig:boxplotReg}.
 
 \begin{figure}[h!]

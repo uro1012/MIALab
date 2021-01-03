@@ -2,21 +2,21 @@
 The results are separated for registration and segmentation approaches. All were obtained with 20 training images and 10 test images. The results for each case are measured with the Dice score and the Hausdorff distance. They represented with boxplots to show the mean as well as the variability.
 
 \subsection*{Random forest parameters optimization}
-For a fixed number of estimator of 10, the random forest approach almost reaches its optimal performance around 20. As the time consumption of the algorithm has not been considered in this work, a margin has been tolerated and the selected number of estimators was 40. 
+For a fixed number of estimator of 10, the random forest approach almost reaches its optimal performance with a depth of 20. As the time consumption of the algorithm has not been considered in this work, a margin has been tolerated and the selected number of depths was 40. 
 
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=\linewidth]{img/plotMLOptDepth2}
-	\caption{Random forest mean Hausdorff distance and dice coefficient for a constant number of estimator of 10.}
+	\caption{Random forest mean Hausdorff distance and dice coefficient for a constant number of estimator of 10 and depths between 10 and 70.}
 	\label{fig:MLOptDepth}
 \end{figure}
 
-With a fixed number of estimator, except for the thalamus and hippocampus regions, the random forest shows the best results for a depth of 10. 
+With a fixed number of depths, except for the amygdala, thalamus and hippocampus regions, the random forest shows the best results for a estimator of 10.
 
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=\linewidth]{img/plotMLOptEstimator2}
-	\caption{Random forest  mean Hausdorff distance and dice coefficient for a constant depth of 40.}
+	\caption{Random forest  mean Hausdorff distance and dice coefficient for a constant depth of 40 and estimators between 2 and 20.}
 	\label{fig:MLOptEst}
 \end{figure}
 

@@ -1,0 +1,17 @@
+\begin{thebibliography}{1}
+
+\bibitem{Klein2005}
+A.~Klein, B.~Mensh, S.~Ghosh, J.~Tourville, and J.~Hirsch, ``Mindboggle:
+  Automated brain labeling with multiple atlases,'' {\em BMC Medical Imaging},
+  vol.~5, 10 2005.
+
+\bibitem{Artaechevarria2009}
+X.~Artaechevarria, A.~Muñoz-Barrutia, and C.~O. de~Solórzano, ``Combination
+  strategies in multi-atlas image segmentation: Application to brain mr data,''
+  {\em IEEE Transactions on Medical Imaging}, vol.~28, pp.~1266--1277, 2009.
+
+\bibitem{Rohlfing2007}
+T.~Rohlfing and C.~R. Maurer, ``Shape-based averaging,'' vol.~16, pp.~153--161,
+  2007.
+
+\end{thebibliography}
